@@ -372,7 +372,7 @@ export default function Civilization() {
   const [notices, setNotices] = useState([]);
   const [toast, setToast] = useState(null);
   const [slotsView, setSlotsView] = useState(null); // null | "save" | "load"
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(1.5);
   const [muted, setMuted] = useState(false);
   const minimapRef = useRef(null);
   const mapWrapRef = useRef(null);
@@ -470,6 +470,40 @@ export default function Civilization() {
     const pxPerTileY = canvas.clientHeight / MAP_H;
     wrap.scrollTo({ left: tx * pxPerTileX - wrap.clientWidth / 2, top: ty * pxPerTileY - wrap.clientHeight / 2, behavior: "smooth" });
   };
+
+  // center the map viewport on a tile (only when it's off-screen, unless forced)
+  const ensureTileVisible = (x, y, force) => {
+    const wrap = mapWrapRef.current, canvas = canvasRef.current;
+    if (!wrap || !canvas || x == null) return;
+    const pxX = (x + 0.5) * (canvas.clientWidth / MAP_W);
+    const pxY = (y + 0.5) * (canvas.clientHeight / MAP_H);
+    const margin = 70;
+    const offL = pxX < wrap.scrollLeft + margin, offR = pxX > wrap.scrollLeft + wrap.clientWidth - margin;
+    const offT = pxY < wrap.scrollTop + margin, offB = pxY > wrap.scrollTop + wrap.clientHeight - margin;
+    if (force || offL || offR || offT || offB) {
+      wrap.scrollTo({ left: pxX - wrap.clientWidth / 2, top: pxY - wrap.clientHeight / 2, behavior: force ? "auto" : "smooth" });
+    }
+  };
+
+  // on a fresh game (no cities yet), center the view on the player's first unit
+  useEffect(() => {
+    if (state.cities.length > 0) return;
+    const u = state.units.find((q) => q.civ === 0);
+    if (!u) return;
+    const r = requestAnimationFrame(() => ensureTileVisible(u.x, u.y, true));
+    return () => cancelAnimationFrame(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed]);
+
+  // keep the selected unit in view (also as it walks via keyboard)
+  const selPos = (() => {
+    const u = selected ? state.units.find((q) => q.id === selected) : null;
+    return u && u.civ === 0 ? { x: u.x, y: u.y } : null;
+  })();
+  useEffect(() => {
+    if (selPos) ensureTileVisible(selPos.x, selPos.y, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selPos && selPos.x, selPos && selPos.y]);
 
   const tiles = world.tiles;
   const addLogs = (m) => { if (m.length) setLog((l) => [...m.slice().reverse(), ...l].slice(0, 8)); };
