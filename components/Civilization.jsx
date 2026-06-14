@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
 // ============ CONSTANTS ============
-const MAP_W = 42, MAP_H = 27, TILE = 26, END_TURN = 140;
+const MAP_W = 34, MAP_H = 22, TILE = 32, END_TURN = 140;
 
 const TERRAIN = {
   ocean:    { color: "#16395f", food: 1, prod: 0, def: 1.0, name: "Океан" },
@@ -1564,22 +1564,27 @@ export default function Civilization() {
       setSelected(null); setCityView(null); setEmpireView(false); return;
     }
     if (slotsView) return;
-    const dirs = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], Home: [-1, -1], PageUp: [1, -1], End: [-1, 1], PageDown: [1, 1] };
-    if (dirs[k]) {
-      if (selUnit && selUnit.civ === 0 && !gameOver) { e.preventDefault(); handleTileAction(selUnit.x + dirs[k][0], selUnit.y + dirs[k][1]); }
+    // Рух: стрілки + Home/End/PgUp/PgDn (за e.key) та цифрова клавіатура (за e.code).
+    // e.code не залежить від розкладки — працює і з кирилицею.
+    const dirsKey = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], Home: [-1, -1], PageUp: [1, -1], End: [-1, 1], PageDown: [1, 1] };
+    const dirsCode = { Numpad8: [0, -1], Numpad2: [0, 1], Numpad4: [-1, 0], Numpad6: [1, 0], Numpad7: [-1, -1], Numpad9: [1, -1], Numpad1: [-1, 1], Numpad3: [1, 1] };
+    const dir = dirsKey[k] || dirsCode[e.code];
+    if (dir) {
+      if (selUnit && selUnit.civ === 0 && !gameOver) { e.preventDefault(); handleTileAction(selUnit.x + dir[0], selUnit.y + dir[1]); }
       return;
     }
-    switch (k.toLowerCase()) {
-      case "enter": if (!gameOver) endTurn(); break;
-      case " ": e.preventDefault(); nextUnit(); break;
-      case "n": nextUnit(); break;
-      case "b": if (selUnit && selUnit.type === "settler" && !selUnit.aboard) foundCity(); break;
-      case "f": if (selUnit && selUnit.type !== "settler" && !selUnit.aboard) fortify(); break;
-      case "r": if (selUnit && selUnit.type === "settler" && !selUnit.aboard && !curTile.road) buildImprovement("road"); break;
-      case "i": if (selUnit && selUnit.type === "settler" && !selUnit.aboard && ["grass", "plains", "desert"].includes(curTerr) && !curTile.irr) buildImprovement("irr"); break;
-      case "m": if (selUnit && selUnit.type === "settler" && !selUnit.aboard && ["hills", "mountain", "desert"].includes(curTerr) && !curTile.mine) buildImprovement("mine"); break;
-      case "s": if (selUnit) skipUnit(); break;
-      case "e": setEmpireView((v) => !v); break;
+    // Дії — за фізичною клавішею (e.code), щоб працювало за будь-якої розкладки.
+    switch (e.code) {
+      case "Enter": case "NumpadEnter": if (!gameOver) endTurn(); break;
+      case "Space": case "Numpad5": e.preventDefault(); nextUnit(); break;
+      case "KeyN": nextUnit(); break;
+      case "KeyB": if (selUnit && selUnit.type === "settler" && !selUnit.aboard) foundCity(); break;
+      case "KeyF": if (selUnit && selUnit.type !== "settler" && !selUnit.aboard) fortify(); break;
+      case "KeyR": if (selUnit && selUnit.type === "settler" && !selUnit.aboard && !curTile.road) buildImprovement("road"); break;
+      case "KeyI": if (selUnit && selUnit.type === "settler" && !selUnit.aboard && ["grass", "plains", "desert"].includes(curTerr) && !curTile.irr) buildImprovement("irr"); break;
+      case "KeyM": if (selUnit && selUnit.type === "settler" && !selUnit.aboard && ["hills", "mountain", "desert"].includes(curTerr) && !curTile.mine) buildImprovement("mine"); break;
+      case "KeyS": if (selUnit) skipUnit(); break;
+      case "KeyE": setEmpireView((v) => !v); break;
       default: break;
     }
   };
@@ -1762,9 +1767,9 @@ export default function Civilization() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
         {/* MAP */}
-        <div style={{ flex: "1 1 640px", minWidth: 320 }}>
+        <div style={{ flex: "1 1 720px", minWidth: 320 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
             <button style={sbtn} title="Зменшити" onClick={() => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))}>➖</button>
             <span style={{ fontSize: 11, color: "#9a9ac4", minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
@@ -1773,10 +1778,10 @@ export default function Civilization() {
             <span style={{ fontSize: 10.5, color: "#7a7aa6", marginLeft: 4 }}>двома пальцями — масштаб, мінімапа — навігація</span>
           </div>
           <div ref={mapWrapRef} onTouchStart={onMapTouchStart} onTouchMove={onMapTouchMove} onTouchEnd={onMapTouchEnd}
-            style={{ overflow: "auto", borderRadius: 10, border: "1px solid #2e2e54", maxHeight: "80vh", touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", background: "#07070f" }}>
+            style={{ overflow: "auto", borderRadius: 10, border: "1px solid #2e2e54", height: "min(88vh, calc(100vh - 158px))", minHeight: 400, touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", background: "#07070f" }}>
             <canvas ref={canvasRef} width={MAP_W * TILE} height={MAP_H * TILE}
               onClick={handleCanvasClick} onMouseMove={handleMove} onMouseLeave={() => setHover(null)}
-              style={{ cursor: "pointer", width: `${zoom * 100}%`, height: "auto", display: "block" }} />
+              style={{ cursor: "pointer", height: `${zoom * 100}%`, width: "auto", maxWidth: zoom <= 1 ? "100%" : "none", margin: "0 auto", display: "block" }} />
           </div>
           <div style={{ marginTop: 6, minHeight: 22, fontSize: 12, color: "#9a9ac4", padding: "2px 6px" }}>
             {hoverInfo || "Наведи на клітинку, щоб побачити інформацію"}
@@ -1784,7 +1789,7 @@ export default function Civilization() {
         </div>
 
         {/* SIDEBAR */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: "0 1 340px", minWidth: 290 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: "0 1 300px", minWidth: 270 }}>
           <div style={panel}>
             <div style={panelTitle}>🗺 Мінімапа</div>
             <canvas ref={minimapRef} width={MAP_W * 3} height={MAP_H * 3} onClick={handleMinimapClick}
@@ -1941,7 +1946,7 @@ export default function Civilization() {
               </span>
             ))}
             <br />S поселенець · D дипломат · W воїн · P фаланга · H вершник · A лучник · L легіон · C колісниця · K катапульта · R лицар · T трирема · ★ ветеран · 🟡 крапка = найманець
-            <br /><span style={{ color: "#9a9ac4" }}>⌨ Клавіші:</span> стрілки / Home·End·PgUp·PgDn — рух · Space — наст. юніт · B — місто · F — укріпитись · R/I/M — дорога/зрошення/шахта · S — пропустити · E — імперія · Enter — хід · Esc — зняти виділення
+            <br /><span style={{ color: "#9a9ac4" }}>⌨ Клавіші:</span> стрілки / цифрова клав. (8·2·4·6 + діагоналі) / Home·End·PgUp·PgDn — рух · Space — наст. юніт · B — місто · F — укріпитись · R/I/M — дорога/зрошення/шахта · S — пропустити · E — імперія · Enter — хід · Esc — зняти виділення <span style={{ color: "#7a7aa6" }}>(працюють за будь-якої розкладки)</span>
           </div>
         </div>
       </div>
