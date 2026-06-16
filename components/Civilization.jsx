@@ -372,7 +372,7 @@ export default function Civilization() {
   const [notices, setNotices] = useState([]);
   const [toast, setToast] = useState(null);
   const [slotsView, setSlotsView] = useState(null); // null | "save" | "load"
-  const [zoom, setZoom] = useState(1.5);
+  const [zoom, setZoom] = useState(1.25);
   const [muted, setMuted] = useState(false);
   const [mousePos, setMousePos] = useState(null);   // {cx, cy} for cursor tooltip
   const [viewRect, setViewRect] = useState(null);   // visible area as fractions for minimap
@@ -1919,7 +1919,7 @@ export default function Civilization() {
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
         {/* MAP */}
-        <div style={{ flex: "1 1 720px", minWidth: 320 }}>
+        <div style={{ flex: "1 1 880px", minWidth: 320 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
             <button style={sbtn} title="Зменшити" onClick={() => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))}>➖</button>
             <span style={{ fontSize: 11, color: "#9a9ac4", minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
@@ -1929,7 +1929,7 @@ export default function Civilization() {
           </div>
           <div ref={mapWrapRef} onTouchStart={onMapTouchStart} onTouchMove={onMapTouchMove} onTouchEnd={onMapTouchEnd}
             onScroll={updateViewRect} onWheel={onMapWheel}
-            style={{ overflow: "auto", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", height: "min(88vh, calc(100vh - 158px))", minHeight: 400, touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", background: "#05060d", boxShadow: "0 12px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.4)" }}>
+            style={{ overflow: "auto", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", height: "min(94vh, calc(100vh - 120px))", minHeight: 460, touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", background: "#05060d", boxShadow: "0 12px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.4)" }}>
             <canvas ref={canvasRef} width={MAP_W * TILE} height={MAP_H * TILE}
               onClick={handleCanvasClick} onMouseMove={handleMove}
               onMouseDown={handleMouseDown} onMouseUp={endPan}
@@ -1942,7 +1942,7 @@ export default function Civilization() {
         </div>
 
         {/* SIDEBAR */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: "0 1 300px", minWidth: 270 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: "0 1 272px", minWidth: 256 }}>
           <div style={panel}>
             <div style={panelTitle}>🗺 Мінімапа</div>
             <div style={{ position: "relative", lineHeight: 0 }}>
