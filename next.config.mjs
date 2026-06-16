@@ -4,13 +4,20 @@
 // тому всі джерела обмежені до 'self'. 'unsafe-inline' для script/style
 // необхідний: Next інжектить інлайн-скрипти гідратації, а UI побудований
 // на інлайн-стилях React (nonce вимагав би middleware і зламав статику).
+const isDev = process.env.NODE_ENV !== "production";
+
+// У dev-режимі Next Fast Refresh (HMR) використовує eval, тож без 'unsafe-eval'
+// клієнтський бандл падає й сторінка не гідратується. У продакшні eval не
+// потрібен — там директива лишається суворою.
+const scriptSrc = "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : "");
+
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'self'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",

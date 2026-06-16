@@ -1,19 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 
 // ============ CONSTANTS ============
 const MAP_W = 34, MAP_H = 22, TILE = 32, END_TURN = 140;
 
 const TERRAIN = {
-  ocean:    { color: "#16395f", food: 1, prod: 0, def: 1.0, name: "Океан" },
-  coast:    { color: "#1f5a8a", food: 1, prod: 0, def: 1.0, name: "Узбережжя" },
-  grass:    { color: "#4e9440", food: 2, prod: 1, def: 1.0, name: "Луки" },
-  plains:   { color: "#94b04e", food: 1, prod: 1, def: 1.0, name: "Рівнини" },
-  forest:   { color: "#2d6327", food: 1, prod: 2, def: 1.5, name: "Ліс" },
-  hills:    { color: "#a08c58", food: 1, prod: 2, def: 2.0, name: "Пагорби" },
-  mountain: { color: "#7d7d80", food: 0, prod: 1, def: 3.0, name: "Гори" },
-  desert:   { color: "#d8bc6e", food: 0, prod: 1, def: 1.0, name: "Пустеля" },
+  ocean:    { color: "#123a5e", food: 1, prod: 0, def: 1.0, name: "Океан" },
+  coast:    { color: "#1f6298", food: 1, prod: 0, def: 1.0, name: "Узбережжя" },
+  grass:    { color: "#55a046", food: 2, prod: 1, def: 1.0, name: "Луки" },
+  plains:   { color: "#a4b956", food: 1, prod: 1, def: 1.0, name: "Рівнини" },
+  forest:   { color: "#2c6b29", food: 1, prod: 2, def: 1.5, name: "Ліс" },
+  hills:    { color: "#aa9560", food: 1, prod: 2, def: 2.0, name: "Пагорби" },
+  mountain: { color: "#83838d", food: 0, prod: 1, def: 3.0, name: "Гори" },
+  desert:   { color: "#ddc070", food: 0, prod: 1, def: 1.0, name: "Пустеля" },
 };
 const WATER = (t) => t === "ocean" || t === "coast";
 
@@ -374,11 +374,18 @@ export default function Civilization() {
   const [slotsView, setSlotsView] = useState(null); // null | "save" | "load"
   const [zoom, setZoom] = useState(1.5);
   const [muted, setMuted] = useState(false);
+  const [mousePos, setMousePos] = useState(null);   // {cx, cy} for cursor tooltip
+  const [viewRect, setViewRect] = useState(null);   // visible area as fractions for minimap
   const minimapRef = useRef(null);
   const mapWrapRef = useRef(null);
   const audioRef = useRef(null);
   const pinchRef = useRef(null);
   const keyRef = useRef(null);
+  const panRef = useRef(null);          // drag-to-pan state
+  const justDraggedRef = useRef(false); // suppress click right after a drag
+  const zoomFocusRef = useRef(null);    // keep point under cursor stable when zooming
+  const viewRectRaf = useRef(0);
+  const endTurnArmedRef = useRef(false);
 
   // auto-hide toast
   useEffect(() => {
@@ -471,6 +478,49 @@ export default function Civilization() {
     wrap.scrollTo({ left: tx * pxPerTileX - wrap.clientWidth / 2, top: ty * pxPerTileY - wrap.clientHeight / 2, behavior: "smooth" });
   };
 
+  // recompute the visible-area rectangle drawn over the minimap (throttled to a frame)
+  const updateViewRect = () => {
+    if (viewRectRaf.current) return;
+    viewRectRaf.current = requestAnimationFrame(() => {
+      viewRectRaf.current = 0;
+      const wrap = mapWrapRef.current, canvas = canvasRef.current;
+      if (!wrap || !canvas || !canvas.clientWidth) return;
+      setViewRect({
+        l: wrap.scrollLeft / canvas.clientWidth,
+        t: wrap.scrollTop / canvas.clientHeight,
+        w: Math.min(1, wrap.clientWidth / canvas.clientWidth),
+        h: Math.min(1, wrap.clientHeight / canvas.clientHeight),
+      });
+    });
+  };
+
+  // wheel over the map = zoom, keeping the tile under the cursor fixed
+  const onMapWheel = (e) => {
+    const wrap = mapWrapRef.current, canvas = canvasRef.current;
+    if (!wrap || !canvas) return;
+    e.preventDefault();
+    const wr = wrap.getBoundingClientRect();
+    const offX = e.clientX - wr.left, offY = e.clientY - wr.top;
+    zoomFocusRef.current = {
+      fracX: (wrap.scrollLeft + offX) / canvas.clientWidth,
+      fracY: (wrap.scrollTop + offY) / canvas.clientHeight,
+      offX, offY,
+    };
+    setZoom((z) => Math.min(3, Math.max(1, +(z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)).toFixed(3))));
+  };
+
+  // after zoom changes, restore the focal point and refresh the minimap rectangle
+  useLayoutEffect(() => {
+    const wrap = mapWrapRef.current, canvas = canvasRef.current;
+    if (wrap && canvas && zoomFocusRef.current) {
+      const f = zoomFocusRef.current; zoomFocusRef.current = null;
+      wrap.scrollLeft = f.fracX * canvas.clientWidth - f.offX;
+      wrap.scrollTop = f.fracY * canvas.clientHeight - f.offY;
+    }
+    updateViewRect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom]);
+
   // center the map viewport on a tile (only when it's off-screen, unless forced)
   const ensureTileVisible = (x, y, force) => {
     const wrap = mapWrapRef.current, canvas = canvasRef.current;
@@ -483,6 +533,7 @@ export default function Civilization() {
     if (force || offL || offR || offT || offB) {
       wrap.scrollTo({ left: pxX - wrap.clientWidth / 2, top: pxY - wrap.clientHeight / 2, behavior: force ? "auto" : "smooth" });
     }
+    updateViewRect();
   };
 
   // on a fresh game (no cities yet), center the view on the player's first unit
@@ -866,7 +917,29 @@ export default function Civilization() {
     return { x, y };
   };
 
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    const wrap = mapWrapRef.current;
+    if (!wrap) return;
+    panRef.current = { sx: e.clientX, sy: e.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop, moved: false };
+  };
+
+  const endPan = () => {
+    if (panRef.current && panRef.current.moved) justDraggedRef.current = true;
+    panRef.current = null;
+  };
+
   const handleMove = (e) => {
+    // drag-to-pan: move the viewport with the mouse
+    if (panRef.current) {
+      const dx = e.clientX - panRef.current.sx, dy = e.clientY - panRef.current.sy;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) panRef.current.moved = true;
+      const wrap = mapWrapRef.current;
+      if (wrap) { wrap.scrollLeft = panRef.current.sl - dx; wrap.scrollTop = panRef.current.st - dy; updateViewRect(); }
+      setHover(null); setMousePos(null);
+      return;
+    }
+    setMousePos({ cx: e.clientX, cy: e.clientY });
     const { x, y } = toTileCoords(e);
     if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) { setHover(null); return; }
     if (!hover || hover.x !== x || hover.y !== y) setHover({ x, y });
@@ -1078,6 +1151,7 @@ export default function Civilization() {
   };
 
   const handleCanvasClick = (e) => {
+    if (justDraggedRef.current) { justDraggedRef.current = false; return; } // it was a pan, not a click
     const { x, y } = toTileCoords(e);
     handleTileAction(x, y);
   };
@@ -1560,6 +1634,7 @@ export default function Civilization() {
   const availGovs = Object.entries(GOVERNMENTS).filter(([k, g]) => !g.tech || state.research.done.includes(g.tech));
 
   const myCities = state.cities.filter((c) => c.civ === 0);
+  const idleUnits = state.units.filter((u) => u.civ === 0 && u.moves > 0 && !u.fortified && !u.aboard && !u.dest);
   let income = 0, sciRate = 0;
   if (!state.anarchy) {
     myCities.forEach((c) => {
@@ -1586,6 +1661,21 @@ export default function Civilization() {
     : [];
   const mercUpkeep = state.units.filter((u) => u.civ === 0 && u.merc).reduce((s, u) => s + Math.ceil(UNIT_TYPES[u.type].cost / 10), 0);
 
+  // ending the turn with idle units: first jump to one and warn, end on the next press
+  const requestEndTurn = () => {
+    if (gameOver) return;
+    if (idleUnits.length > 0 && !endTurnArmedRef.current) {
+      endTurnArmedRef.current = true;
+      const u = idleUnits[0];
+      setSelected(u.id);
+      ensureTileVisible(u.x, u.y, false);
+      setToast({ id: Date.now(), text: `⏳ Ще ${idleUnits.length} юніт(ів) мають ходи. Натисни «Завершити хід» ще раз, щоб завершити.` });
+      return;
+    }
+    endTurnArmedRef.current = false;
+    endTurn();
+  };
+
   // keep the live keyboard handler in sync with current state/selection
   keyRef.current = (e) => {
     const tag = (e.target && e.target.tagName ? e.target.tagName : "").toLowerCase();
@@ -1609,7 +1699,7 @@ export default function Civilization() {
     }
     // Дії — за фізичною клавішею (e.code), щоб працювало за будь-якої розкладки.
     switch (e.code) {
-      case "Enter": case "NumpadEnter": if (!gameOver) endTurn(); break;
+      case "Enter": case "NumpadEnter": requestEndTurn(); break;
       case "Space": case "Numpad5": e.preventDefault(); nextUnit(); break;
       case "KeyN": nextUnit(); break;
       case "KeyB": if (selUnit && selUnit.type === "settler" && !selUnit.aboard) foundCity(); break;
@@ -1640,12 +1730,27 @@ export default function Civilization() {
     return parts.join(" · ");
   })();
 
-  // ============ STYLES ============
-  const panel = { background: "#14142a", border: "1px solid #2e2e54", borderRadius: 10, padding: "12px 14px", color: "#d6d6ea" };
-  const panelTitle = { fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "#8a8ab8", marginBottom: 8, fontWeight: "bold" };
-  const btn = { background: "#2c4d80", color: "#fff", border: "1px solid #4a6aa0", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit" };
-  const sbtn = { ...btn, padding: "4px 9px", fontSize: 11 };
-  const chip = { display: "inline-flex", alignItems: "center", gap: 4, background: "#1c1c38", border: "1px solid #32325e", borderRadius: 20, padding: "4px 12px", fontSize: 12.5 };
+  // ============ STYLES ============ (glassmorphism design system)
+  const panel = {
+    background: "linear-gradient(160deg, rgba(40,44,86,0.55), rgba(20,22,46,0.5))",
+    border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, padding: "13px 15px", color: "#dcdcf0",
+    backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+    boxShadow: "0 10px 32px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.07)",
+  };
+  const panelTitle = { fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: "#9a9ad8", marginBottom: 9, fontWeight: 700 };
+  const btn = {
+    background: "linear-gradient(180deg, rgba(78,112,186,0.95), rgba(42,74,128,0.95))",
+    color: "#fff", border: "1px solid rgba(130,168,236,0.45)", borderRadius: 10, padding: "7px 13px",
+    cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 600,
+    boxShadow: "0 3px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.14)",
+  };
+  const sbtn = { ...btn, padding: "5px 10px", fontSize: 11, borderRadius: 8 };
+  const chip = {
+    display: "inline-flex", alignItems: "center", gap: 5,
+    background: "rgba(255,255,255,0.055)", border: "1px solid rgba(255,255,255,0.11)",
+    borderRadius: 20, padding: "5px 13px", fontSize: 12.5,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+  };
 
   const Bar = ({ value, max, color }) => (
     <div style={{ background: "#0d0d1c", borderRadius: 4, height: 8, overflow: "hidden", border: "1px solid #2a2a4e" }}>
@@ -1656,15 +1761,26 @@ export default function Civilization() {
   const buildTarget = viewCity ? (UNIT_TYPES[viewCity.building] || BUILDINGS[viewCity.building] || WONDERS[viewCity.building]) : null;
 
   return (
-    <div style={{ background: "linear-gradient(180deg,#0b0b18 0%,#10101f 100%)", minHeight: "100vh", padding: 14, fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#e4e4f4" }}>
+    <div className="civ-root" style={{ background: "radial-gradient(1200px 620px at 18% -12%, #1d2456 0%, transparent 58%), radial-gradient(1000px 520px at 102% -6%, #321a4e 0%, transparent 52%), linear-gradient(180deg,#08080f 0%,#0c0c1a 100%)", minHeight: "100vh", padding: 14, fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#e4e4f4" }}>
       <style>{`@keyframes civPulse{0%{box-shadow:0 0 0 0 rgba(232,184,77,.45)}70%{box-shadow:0 0 0 9px rgba(232,184,77,0)}100%{box-shadow:0 0 0 0 rgba(232,184,77,0)}}
-@keyframes civToast{0%{opacity:0;transform:translateY(14px)}10%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(8px)}}`}</style>
+@keyframes civToast{0%{opacity:0;transform:translateY(14px)}10%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(8px)}}
+.civ-root button{transition:filter .13s ease, transform .1s ease, box-shadow .13s ease}
+.civ-root button:not(:disabled):hover{filter:brightness(1.14) saturate(1.05)}
+.civ-root button:not(:disabled):active{transform:translateY(1px); filter:brightness(0.95)}
+.civ-root button:focus-visible{outline:2px solid #f5cf3d; outline-offset:2px}
+.civ-root input[type=range]{accent-color:#6d9ce0; cursor:pointer}
+.civ-root canvas{transition:filter .15s ease}
+.civ-root ::-webkit-scrollbar{width:11px;height:11px}
+.civ-root ::-webkit-scrollbar-thumb{background:rgba(124,148,212,0.32); border-radius:8px; border:2px solid transparent; background-clip:padding-box}
+.civ-root ::-webkit-scrollbar-thumb:hover{background:rgba(124,148,212,0.5); background-clip:padding-box}
+.civ-root ::-webkit-scrollbar-track{background:transparent}`}</style>
       {toast && (
         <div key={toast.id} style={{
           position: "fixed", right: 18, bottom: 18, zIndex: 50, pointerEvents: "none",
-          background: "rgba(20,20,42,0.95)", border: "1px solid #4a6aa0", borderRadius: 10,
-          padding: "10px 16px", fontSize: 13, color: "#e4e4f4",
-          boxShadow: "0 6px 24px rgba(0,0,0,0.5)",
+          background: "rgba(24,26,52,0.78)", border: "1px solid rgba(130,168,236,0.4)", borderRadius: 12,
+          padding: "11px 17px", fontSize: 13, color: "#eaeaf8",
+          backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          boxShadow: "0 10px 34px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)",
           animation: "civToast 3s ease forwards",
         }}>
           {toast.text}
@@ -1672,7 +1788,7 @@ export default function Civilization() {
       )}
 
       {slotsView && (
-        <div onClick={() => setSlotsView(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <div onClick={() => setSlotsView(null)} style={{ position: "fixed", inset: 0, background: "rgba(6,6,16,0.6)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ ...panel, width: 360, maxWidth: "92vw" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ ...panelTitle, marginBottom: 0 }}>{slotsView === "save" ? "💾 Зберегти у слот" : "📂 Завантажити слот"}</span>
@@ -1700,10 +1816,10 @@ export default function Civilization() {
       )}
 
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8, background: "#14142a", border: "1px solid #2e2e54", borderRadius: 10, padding: "10px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 20 }}>🏛</span>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "#f5cf3d", letterSpacing: 2 }}>CIVILIZATION</span>
+      <div style={{ ...panel, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8, padding: "11px 18px", borderRadius: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <span style={{ fontSize: 22, filter: "drop-shadow(0 0 8px rgba(245,207,61,0.4))" }}>🏛</span>
+          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: 3, background: "linear-gradient(90deg,#ffe680,#f5cf3d,#e8a93d)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", textShadow: "0 0 18px rgba(245,207,61,0.25)" }}>CIVILIZATION</span>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <span style={chip}>🗓 {state.turn}/{END_TURN} · {yearOf(state.turn)}</span>
@@ -1718,7 +1834,7 @@ export default function Civilization() {
           <button style={btn} title={muted ? "Звук вимкнено — увімкнути" : "Звук увімкнено — вимкнути"} onClick={toggleMute}>{muted ? "🔇" : "🔊"}</button>
           <button style={btn} onClick={nextUnit}>⏭ Юніт</button>
           <button style={btn} onClick={() => setEmpireView(!empireView)}>🏛 Імперія</button>
-          <button style={{ ...btn, background: "#9a5a20", borderColor: "#c08040", fontWeight: 700 }} onClick={endTurn}>
+          <button style={{ ...btn, background: "linear-gradient(180deg,#d88a3a,#a55c1c)", borderColor: "rgba(232,170,90,0.6)", fontWeight: 800, boxShadow: "0 3px 14px rgba(180,100,30,0.45), inset 0 1px 0 rgba(255,255,255,0.2)" }} onClick={endTurn}>
             Завершити хід ▶{!state.research.current && myCities.length > 0 ? " ⚠" : ""}
           </button>
         </div>
@@ -1812,12 +1928,15 @@ export default function Civilization() {
             <span style={{ fontSize: 10.5, color: "#7a7aa6", marginLeft: 4 }}>двома пальцями — масштаб, мінімапа — навігація</span>
           </div>
           <div ref={mapWrapRef} onTouchStart={onMapTouchStart} onTouchMove={onMapTouchMove} onTouchEnd={onMapTouchEnd}
-            style={{ overflow: "auto", borderRadius: 10, border: "1px solid #2e2e54", height: "min(88vh, calc(100vh - 158px))", minHeight: 400, touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", background: "#07070f" }}>
+            onScroll={updateViewRect} onWheel={onMapWheel}
+            style={{ overflow: "auto", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", height: "min(88vh, calc(100vh - 158px))", minHeight: 400, touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", background: "#05060d", boxShadow: "0 12px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.4)" }}>
             <canvas ref={canvasRef} width={MAP_W * TILE} height={MAP_H * TILE}
-              onClick={handleCanvasClick} onMouseMove={handleMove} onMouseLeave={() => setHover(null)}
-              style={{ cursor: "pointer", height: `${zoom * 100}%`, width: "auto", maxWidth: zoom <= 1 ? "100%" : "none", margin: "0 auto", display: "block" }} />
+              onClick={handleCanvasClick} onMouseMove={handleMove}
+              onMouseDown={handleMouseDown} onMouseUp={endPan}
+              onMouseLeave={() => { endPan(); setHover(null); setMousePos(null); }}
+              style={{ cursor: panRef.current ? "grabbing" : "grab", height: `${zoom * 100}%`, width: "auto", maxWidth: zoom <= 1 ? "100%" : "none", margin: "0 auto", display: "block" }} />
           </div>
-          <div style={{ marginTop: 6, minHeight: 22, fontSize: 12, color: "#9a9ac4", padding: "2px 6px" }}>
+          <div style={{ marginTop: 8, minHeight: 24, fontSize: 12, color: hoverInfo ? "#cfcfe8" : "#7a7aa6", padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, backdropFilter: "blur(8px)" }}>
             {hoverInfo || "Наведи на клітинку, щоб побачити інформацію"}
           </div>
         </div>
@@ -1826,8 +1945,18 @@ export default function Civilization() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: "0 1 300px", minWidth: 270 }}>
           <div style={panel}>
             <div style={panelTitle}>🗺 Мінімапа</div>
-            <canvas ref={minimapRef} width={MAP_W * 3} height={MAP_H * 3} onClick={handleMinimapClick}
-              style={{ width: "100%", height: "auto", imageRendering: "pixelated", borderRadius: 6, border: "1px solid #2a2a4e", display: "block", cursor: "crosshair" }} />
+            <div style={{ position: "relative", lineHeight: 0 }}>
+              <canvas ref={minimapRef} width={MAP_W * 3} height={MAP_H * 3} onClick={handleMinimapClick}
+                style={{ width: "100%", height: "auto", imageRendering: "pixelated", borderRadius: 6, border: "1px solid #2a2a4e", display: "block", cursor: "crosshair" }} />
+              {viewRect && (viewRect.w < 0.999 || viewRect.h < 0.999) && (
+                <div style={{
+                  position: "absolute", pointerEvents: "none", border: "1.5px solid #f5cf3d", borderRadius: 2,
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
+                  left: `${viewRect.l * 100}%`, top: `${viewRect.t * 100}%`,
+                  width: `${viewRect.w * 100}%`, height: `${viewRect.h * 100}%`,
+                }} />
+              )}
+            </div>
           </div>
           {selUnit && (
             <div style={panel}>
