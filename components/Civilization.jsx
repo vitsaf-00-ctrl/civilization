@@ -372,7 +372,7 @@ export default function Civilization() {
   const [notices, setNotices] = useState([]);
   const [toast, setToast] = useState(null);
   const [slotsView, setSlotsView] = useState(null); // null | "save" | "load"
-  const [zoom, setZoom] = useState(1.25);
+  const [zoom, setZoom] = useState(1.5);
   const [muted, setMuted] = useState(false);
   const [mousePos, setMousePos] = useState(null);   // {cx, cy} for cursor tooltip
   const [viewRect, setViewRect] = useState(null);   // visible area as fractions for minimap
