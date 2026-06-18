@@ -6,14 +6,14 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 const MAP_W = 34, MAP_H = 22, TILE = 32, END_TURN = 140;
 
 const TERRAIN = {
-  ocean:    { color: "#123a5e", food: 1, prod: 0, def: 1.0, name: "Океан" },
-  coast:    { color: "#1f6298", food: 1, prod: 0, def: 1.0, name: "Узбережжя" },
-  grass:    { color: "#55a046", food: 2, prod: 1, def: 1.0, name: "Луки" },
-  plains:   { color: "#a4b956", food: 1, prod: 1, def: 1.0, name: "Рівнини" },
-  forest:   { color: "#2c6b29", food: 1, prod: 2, def: 1.5, name: "Ліс" },
-  hills:    { color: "#aa9560", food: 1, prod: 2, def: 2.0, name: "Пагорби" },
-  mountain: { color: "#83838d", food: 0, prod: 1, def: 3.0, name: "Гори" },
-  desert:   { color: "#ddc070", food: 0, prod: 1, def: 1.0, name: "Пустеля" },
+  ocean:    { color: "#0e57a0", food: 1, prod: 0, def: 1.0, name: "Океан" },
+  coast:    { color: "#2a93dd", food: 1, prod: 0, def: 1.0, name: "Узбережжя" },
+  grass:    { color: "#4ec23a", food: 2, prod: 1, def: 1.0, name: "Луки" },
+  plains:   { color: "#cdd84a", food: 1, prod: 1, def: 1.0, name: "Рівнини" },
+  forest:   { color: "#1c9636", food: 1, prod: 2, def: 1.5, name: "Ліс" },
+  hills:    { color: "#cca648", food: 1, prod: 2, def: 2.0, name: "Пагорби" },
+  mountain: { color: "#9a9bab", food: 0, prod: 1, def: 3.0, name: "Гори" },
+  desert:   { color: "#f4d35e", food: 0, prod: 1, def: 1.0, name: "Пустеля" },
 };
 const WATER = (t) => t === "ocean" || t === "coast";
 
@@ -686,12 +686,12 @@ export default function Civilization() {
         ctx.strokeStyle = "rgba(0,0,0,0.12)";
         ctx.beginPath(); ctx.moveTo(px + 4, py + 10); ctx.lineTo(px + 10, py + 10); ctx.moveTo(px + 13, py + 17); ctx.lineTo(px + 20, py + 17); ctx.stroke();
       } else if (tk === "forest") {
-        ctx.fillStyle = "#1d4a1a";
+        ctx.fillStyle = "#0f6b22";
         [[6, 7], [15, 11], [9, 16]].forEach(([ox, oy]) => {
           ctx.beginPath(); ctx.moveTo(px + ox, py + oy + 7); ctx.lineTo(px + ox + 3, py + oy); ctx.lineTo(px + ox + 6, py + oy + 7); ctx.fill();
         });
       } else if (tk === "hills") {
-        ctx.fillStyle = "#b59f68";
+        ctx.fillStyle = "#e0c275";
         ctx.beginPath(); ctx.arc(px + 9, py + 17, 6, Math.PI, 0); ctx.fill();
         ctx.beginPath(); ctx.arc(px + 18, py + 19, 5, Math.PI, 0); ctx.fill();
       } else if (tk === "mountain") {
