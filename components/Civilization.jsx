@@ -43,7 +43,7 @@ const isShip = (t) => !!UNIT_TYPES[t].sea;
 
 const BUILDINGS = {
   barracks:    { name: "Казарми",      cost: 40, tech: null,         desc: "Нові юніти — ветерани (+50% бою)" },
-  temple:      { name: "Храм",         cost: 40, tech: "ceremonial", desc: "+2 задоволених мешканці (з Оракулом +4)" },
+  temple:      { name: "Храм",         cost: 40, tech: "ceremonial", desc: "+3 задоволених мешканці (з Оракулом +6)" },
   granary:     { name: "Зерносховище", cost: 60, tech: "pottery",    desc: "Після росту зберігає ½ їжі" },
   walls:       { name: "Міські стіни", cost: 60, tech: "masonry",    desc: "Захист у місті ×2" },
   library:     { name: "Бібліотека",   cost: 60, tech: "writing",    desc: "Наука міста +50%" },
@@ -289,7 +289,7 @@ function cityYields(c, world, improvements, wondersBuilt, government) {
 
 function cityUnhappy(c, wondersBuilt) {
   let content = 4;
-  if (c.buildings.includes("temple")) content += wondersBuilt.oracle === c.civ ? 4 : 2;
+  if (c.buildings.includes("temple")) content += wondersBuilt.oracle === c.civ ? 6 : 3;
   if (wondersBuilt.hanging_gardens === c.civ) content += 1;
   if (c.civ !== 0) content += 2; // AI отримує бонус замість менеджменту щастя
   return Math.max(0, c.pop - content);
@@ -355,6 +355,22 @@ function findPath(world, units, cities, huts, u, tx, ty) {
     cur = prev.get(cur);
   }
   return path;
+}
+
+// mounted units cross mountains cheaply; everyone else pays double there
+const MOUNTED = new Set(["horseman", "knight", "chariot"]);
+const stepCost = (type, terrain) => (terrain === "mountain" && !MOUNTED.has(type) ? 2 : 1);
+
+// an enemy unit or enemy city on an adjacent tile projects a "zone of control"
+function enemyZOC(x, y, units, cities) {
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) continue;
+    if (units.some((q) => q && q.civ !== 0 && !q.aboard && q.x === nx && q.y === ny)) return true;
+    if (cities.some((c) => c.civ !== 0 && c.x === nx && c.y === ny)) return true;
+  }
+  return false;
 }
 
 // ============ COMPONENT ============
@@ -761,9 +777,14 @@ export default function Civilization() {
           hostile = water && state.units.some((q) => q.civ !== 0 && q.x === nx && q.y === ny);
         } else {
           if (!water) {
-            ok = true;
             hostile = state.units.some((q) => q.civ !== 0 && q.x === nx && q.y === ny) ||
               state.cities.some((c) => c.civ !== 0 && c.x === nx && c.y === ny);
+            const destFriendly = state.units.some((q) => q.civ === 0 && !q.aboard && q.x === nx && q.y === ny) ||
+              state.cities.some((c) => c.civ === 0 && c.x === nx && c.y === ny);
+            // zone of control: can't slip between two enemy-controlled tiles
+            const zocBlock = !hostile && !destFriendly &&
+              enemyZOC(selU.x, selU.y, state.units, state.cities) && enemyZOC(nx, ny, state.units, state.cities);
+            ok = !zocBlock;
           } else {
             // boarding
             ok = state.units.some((q) => q.civ === 0 && isShip(q.type) && q.x === nx && q.y === ny &&
@@ -1054,11 +1075,21 @@ export default function Civilization() {
             setState(newState); setSelected(null); addLogs(msgs); return;
           }
 
+          // зона контролю: не можна прослизнути повз ворога на сусідню вільну клітину
+          {
+            const destFriendly = state.units.some((q) => q.civ === 0 && !q.aboard && q.x === x && q.y === y) ||
+              state.cities.some((c) => c.civ === 0 && c.x === x && c.y === y);
+            if (!destFriendly && enemyZOC(u.x, u.y, state.units, state.cities) && enemyZOC(x, y, state.units, state.cities)) {
+              addLogs(["⛔ Зона контролю: поряд ворог. Можна лише атакувати або відійти на вільну клітину далі від нього."]);
+              return;
+            }
+          }
+
           // звичайний рух (+ хатина племені)
           if (state.huts.has(idx(x, y))) {
             const roll = Math.random();
             setState((st) => {
-              let units2 = st.units.map((q) => q.id === u.id ? { ...q, x, y, moves: q.moves - 1, fortified: false, aboard: null } : q);
+              let units2 = st.units.map((q) => q.id === u.id ? { ...q, x, y, moves: Math.max(0, q.moves - stepCost(u.type, tiles[y][x])), fortified: false, aboard: null } : q);
               let gold = st.gold;
               let research = st.research;
               let nextId = st.nextId;
@@ -1103,7 +1134,7 @@ export default function Civilization() {
           playSound("move");
           setState((st) => ({
             ...st,
-            units: st.units.map((q) => q.id === u.id ? { ...q, x, y, moves: q.moves - 1, fortified: false, aboard: null, dest: null } : q),
+            units: st.units.map((q) => q.id === u.id ? { ...q, x, y, moves: Math.max(0, q.moves - stepCost(u.type, tiles[y][x])), fortified: false, aboard: null, dest: null } : q),
           }));
           return;
         } else if (dx + dy > 1) {
@@ -1123,7 +1154,7 @@ export default function Civilization() {
                 const stp = path[stepI];
                 const enemyNear = units2.some((q) => q.civ !== 0 && !q.aboard && Math.abs(q.x - stp.x) <= 1 && Math.abs(q.y - stp.y) <= 1);
                 if (enemyNear) break;
-                me.x = stp.x; me.y = stp.y; me.moves--; me.fortified = false; stepI++;
+                me.x = stp.x; me.y = stp.y; me.moves = Math.max(0, me.moves - stepCost(me.type, tiles[stp.y][stp.x])); me.fortified = false; stepI++;
               }
               if (me.x === x && me.y === y) me.dest = null;
               if (isShip(me.type)) units2 = units2.map((q) => q.aboard === me.id ? { ...q, x: me.x, y: me.y } : q);
@@ -1132,6 +1163,10 @@ export default function Civilization() {
             addLogs([`🧭 ${UNIT_TYPES[u.type].name}: маршрут прокладено — ${path.length} кл. Юніт рухатиметься сам щоходу.`]);
             return;
           }
+        } else if (dx <= 1 && dy <= 1 && dx + dy > 0 && u.moves <= 0) {
+          const enemyThere = state.units.some((q) => q.x === x && q.y === y && q.civ !== 0 && !q.aboard) ||
+            state.cities.some((c) => c.x === x && c.y === y && c.civ !== 0);
+          if (enemyThere && UNIT_TYPES[u.type].att > 0) { addLogs(["⌛ Юніт вичерпав ходи — атака можлива наступного ходу."]); return; }
         }
       }
     }
@@ -1300,7 +1335,7 @@ export default function Civilization() {
           cur = { ...cur, dest: null };
           break;
         }
-        cur = { ...cur, x: stp.x, y: stp.y, moves: cur.moves - 1, fortified: false };
+        cur = { ...cur, x: stp.x, y: stp.y, moves: Math.max(0, cur.moves - stepCost(cur.type, tiles[stp.y][stp.x])), fortified: false };
         if (cur.dest && cur.x === cur.dest.x && cur.y === cur.dest.y) {
           msgs.push(`🧭 ${UNIT_TYPES[cur.type].name} прибув у пункт призначення.`);
           cur = { ...cur, dest: null };
@@ -1362,7 +1397,10 @@ export default function Civilization() {
       let shields = c.shields + (disorder ? 0 : y.shields);
       if (disorder && c.civ === 0) {
         msgs.push(`😡 Заворушення в ${c.name} — виробництво зупинено!`);
-        notes.push({ id: noteId++, icon: "😡", text: `Заворушення в ${c.name}! Виробництво і торгівля зупинені. Потрібен Храм.`, cityId: c.id, kind: "alert" });
+        const hasTemple = c.buildings.includes("temple");
+        notes.push({ id: noteId++, icon: "😡", text: hasTemple
+          ? `Заворушення в ${c.name}! Виробництво і торгівля зупинені. Храм уже збудовано — потрібне чудо щастя (Висячі сади / Оракул) або стримайте ріст міста.`
+          : `Заворушення в ${c.name}! Виробництво і торгівля зупинені. Збудуйте Храм.`, cityId: c.id, kind: "alert" });
       }
       let building = c.building;
       const tU = UNIT_TYPES[building], tB = BUILDINGS[building], tW = WONDERS[building];
@@ -2025,7 +2063,9 @@ export default function Civilization() {
               </div>
               {viewUnhappy > 0 && (
                 <div style={{ fontSize: 11, color: "#e87070", marginBottom: 6 }}>
-                  {viewUnhappy} незадоволених. Збудуй Храм або чудо щастя.
+                  {viewUnhappy} незадоволених. {viewCity.buildings.includes("temple")
+                    ? "Храм збудовано — потрібне чудо щастя (Висячі сади / Оракул) або стримай ріст."
+                    : "Збудуй Храм або чудо щастя."}
                 </div>
               )}
               <div style={{ fontSize: 11.5, color: "#9a9ac4", marginBottom: 2 }}>Ріст: {viewCity.food}/{viewCity.pop * 10 + 10}</div>
