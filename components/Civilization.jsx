@@ -7,10 +7,12 @@ const MAP_W = 34, MAP_H = 22, TILE = 32, END_TURN = 140;
 
 // selectable game lengths — differ by how many turns (and therefore years per turn)
 const GAME_MODES = [
-  { name: "Швидкий",     turns: 80,  desc: "≈75 років/хід" },
-  { name: "Середній",    turns: 140, desc: "≈43 роки/хід" },
-  { name: "Довгий",      turns: 220, desc: "≈27 років/хід" },
-  { name: "Дуже довгий", turns: 340, desc: "≈18 років/хід" },
+  { name: "Дуже швидкий", turns: 80,   desc: "≈75 років/хід" },
+  { name: "Швидкий",      turns: 140,  desc: "≈43 роки/хід" },
+  { name: "Середній",     turns: 220,  desc: "≈27 років/хід" },
+  { name: "Довгий",       turns: 340,  desc: "≈18 років/хід" },
+  { name: "Дуже довгий",  turns: 1200, desc: "≈5 років/хід" },
+  { name: "Оригінальний", turns: 6000, desc: "≈1 рік/хід" },
 ];
 
 const TERRAIN = {
