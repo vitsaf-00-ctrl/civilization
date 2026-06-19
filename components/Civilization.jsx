@@ -5,6 +5,14 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 // ============ CONSTANTS ============
 const MAP_W = 34, MAP_H = 22, TILE = 32, END_TURN = 140;
 
+// selectable game lengths — differ by how many turns (and therefore years per turn)
+const GAME_MODES = [
+  { name: "Швидкий",     turns: 80,  desc: "≈75 років/хід" },
+  { name: "Середній",    turns: 140, desc: "≈43 роки/хід" },
+  { name: "Довгий",      turns: 220, desc: "≈27 років/хід" },
+  { name: "Дуже довгий", turns: 340, desc: "≈18 років/хід" },
+];
+
 const TERRAIN = {
   ocean:    { color: "#0e57a0", food: 1, prod: 0, def: 1.0, name: "Океан" },
   coast:    { color: "#2a93dd", food: 1, prod: 0, def: 1.0, name: "Узбережжя" },
@@ -109,7 +117,7 @@ const AI_TIERS = [
 ];
 
 const idx = (x, y) => y * MAP_W + x;
-const yearOf = (t) => { const y = -4000 + t * 50; return y < 0 ? `${-y} до н.е.` : `${y} н.е.`; };
+const yearOf = (t, end = END_TURN) => { const y = -4000 + Math.round((t * 6000) / end); return y < 0 ? `${-y} до н.е.` : `${y} н.е.`; };
 
 // ============ WORLD GEN ============
 function genWorld(seed) {
@@ -388,6 +396,8 @@ export default function Civilization() {
   const [notices, setNotices] = useState([]);
   const [toast, setToast] = useState(null);
   const [slotsView, setSlotsView] = useState(null); // null | "save" | "load"
+  const [gameLen, setGameLen] = useState(END_TURN); // total turns for the chosen length
+  const [setupMode, setSetupMode] = useState(true); // show the length picker before play
   const [zoom, setZoom] = useState(1.5);
   const [muted, setMuted] = useState(false);
   const [mousePos, setMousePos] = useState(null);   // {cx, cy} for cursor tooltip
@@ -510,20 +520,9 @@ export default function Civilization() {
     });
   };
 
-  // wheel over the map = zoom, keeping the tile under the cursor fixed
-  const onMapWheel = (e) => {
-    const wrap = mapWrapRef.current, canvas = canvasRef.current;
-    if (!wrap || !canvas) return;
-    e.preventDefault();
-    const wr = wrap.getBoundingClientRect();
-    const offX = e.clientX - wr.left, offY = e.clientY - wr.top;
-    zoomFocusRef.current = {
-      fracX: (wrap.scrollLeft + offX) / canvas.clientWidth,
-      fracY: (wrap.scrollTop + offY) / canvas.clientHeight,
-      offX, offY,
-    };
-    setZoom((z) => Math.min(3, Math.max(1, +(z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)).toFixed(3))));
-  };
+  // wheel/trackpad scrolls the map normally; only block the pinch gesture (ctrl+wheel)
+  // so it neither zooms the map nor the whole browser page. Zoom is via the ± buttons.
+  const onMapWheel = (e) => { if (e.ctrlKey) e.preventDefault(); };
 
   // after zoom changes, restore the focal point and refresh the minimap rectangle
   useLayoutEffect(() => {
@@ -575,12 +574,17 @@ export default function Civilization() {
   const tiles = world.tiles;
   const addLogs = (m) => { if (m.length) setLog((l) => [...m.slice().reverse(), ...l].slice(0, 8)); };
 
-  const restart = () => {
+  // "Нова гра" just reopens the length picker; startGame actually builds the world
+  const restart = () => setSetupMode(true);
+
+  const startGame = (turns) => {
     const ns = Math.floor(Math.random() * 2147480000) + 1;
     const nw = genWorld(ns);
     setSeed(ns); setWorld(nw); setState(initGame(nw, ns));
     setSelected(null); setCityView(null); setGameOver(null); setEmpireView(false); setHover(null); setNotices([]); setToast(null);
-    setLog(["4000 до н.е. — Нова гра. Хай щастить!"]);
+    setGameLen(turns); setSetupMode(false);
+    const mode = GAME_MODES.find((m) => m.turns === turns);
+    setLog([`4000 до н.е. — Нова гра · ${mode ? mode.name : turns + " ходів"}. Хай щастить!`]);
   };
 
   const SAVE_SLOTS = ["auto", "1", "2", "3"];
@@ -589,7 +593,7 @@ export default function Civilization() {
   const writeSave = (slot) => {
     try {
       const data = {
-        v: 2, seed, turn: state.turn, savedAt: Date.now(),
+        v: 2, seed, turn: state.turn, savedAt: Date.now(), gameLen,
         world: { ...world, rivers: [...world.rivers], huts: [...world.huts] },
         state: { ...state, explored: [...state.explored], huts: [...state.huts] },
         log,
@@ -615,6 +619,7 @@ export default function Civilization() {
       setWorld({ ...d.world, rivers: new Set(d.world.rivers), huts: new Set(d.world.huts) });
       setState({ ...d.state, explored: new Set(d.state.explored), huts: new Set(d.state.huts) });
       setLog(d.log || ["Гру завантажено."]);
+      setGameLen(d.gameLen || END_TURN); setSetupMode(false);
       setSelected(null); setCityView(null); setGameOver(null); setEmpireView(false); setNotices([]);
       setToast({ id: Date.now(), text: `📂 Завантажено «${slot === "auto" ? "Авто" : "Слот " + slot}»` });
     } catch (e) {
@@ -628,7 +633,7 @@ export default function Civilization() {
       const raw = localStorage.getItem(slotKey(slot));
       if (!raw) return null;
       const d = JSON.parse(raw);
-      return { turn: d.turn || (d.state && d.state.turn) || 1, savedAt: d.savedAt || null };
+      return { turn: d.turn || (d.state && d.state.turn) || 1, savedAt: d.savedAt || null, gameLen: d.gameLen || END_TURN };
     } catch (e) { return null; }
   };
 
@@ -828,9 +833,7 @@ export default function Civilization() {
         ctx.fillStyle = "#e84040";
         ctx.beginPath(); ctx.arc(px + TILE - 5, py + 7, 3, 0, 7); ctx.fill();
       }
-      ctx.fillStyle = "#000"; ctx.font = "bold 12px monospace"; ctx.textAlign = "center";
-      ctx.fillText(String(c.pop), px + TILE / 2, py + TILE / 2 + 6);
-      ctx.font = "10px sans-serif";
+      ctx.font = "10px sans-serif"; ctx.textAlign = "center";
       const w = ctx.measureText(c.name).width + 6;
       ctx.fillStyle = "rgba(0,0,0,0.65)";
       ctx.fillRect(px + TILE / 2 - w / 2, py - 12, w, 11);
@@ -873,6 +876,17 @@ export default function Civilization() {
         ctx.beginPath(); ctx.arc(px + TILE - 6, py + 6, 3.5, 0, 7); ctx.fill();
         ctx.strokeStyle = "#000"; ctx.stroke();
       }
+    });
+
+    // pop-badges малюємо поверх юнітів, щоб гарнізон ніколи не перекривав рівень міста
+    state.cities.forEach((c) => {
+      if (!state.explored.has(idx(c.x, c.y))) return;
+      const px = c.x * TILE, py = c.y * TILE;
+      ctx.fillStyle = "rgba(0,0,0,0.82)";
+      ctx.beginPath(); ctx.arc(px + 7, py + TILE - 7, 7, 0, 7); ctx.fill();
+      ctx.strokeStyle = CIVS_DEF[c.civ].color; ctx.lineWidth = 1.5; ctx.stroke(); ctx.lineWidth = 1;
+      ctx.fillStyle = "#fff"; ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+      ctx.fillText(String(c.pop), px + 7, py + TILE - 3.5);
     });
 
     // маршрути: прапорці цілей та пунктир для обраного юніта
@@ -1558,6 +1572,9 @@ export default function Civilization() {
           if (win) {
             msgs.push(`Ворожий ${UNIT_TYPES[cur.type].name} (${CIVS_DEF[cur.civ].name}) знищив ваш ${UNIT_TYPES[defInfo.unit.type].name}!`);
             units = units.map((q) => q && q.id === defInfo.unit.id ? null : q);
+            const stillDefended = units.some((q) => q && q.civ === 0 && q.x === nx && q.y === ny && !q.aboard && !isShip(q.type));
+            // ворог не заходить на клітину/в місто, доки там лишається бодай один захисник
+            if (playerCityHere || stillDefended) return cur;
             return { ...cur, x: nx, y: ny };
           } else {
             msgs.push(`Ваш ${UNIT_TYPES[defInfo.unit.type].name} відбив атаку ${CIVS_DEF[cur.civ].name}!`);
@@ -1631,7 +1648,7 @@ export default function Civilization() {
     setState({ ...st, turn: turn + 1, units, cities, nextId, gold, government, anarchy, cityCounters, relations, research, wondersBuilt, civAlive, huts });
     addLogs(msgs);
     setNotices(notes);
-    setToast({ id: Date.now(), text: `✅ Хід ${turn} завершено · ${yearOf(turn + 1)} · 💰 +${income} · 🔬 +${sci}${notes.length ? ` · 🔔 ${notes.length}` : ""}` });
+    setToast({ id: Date.now(), text: `✅ Хід ${turn} завершено · ${yearOf(turn + 1, gameLen)} · 💰 +${income} · 🔬 +${sci}${notes.length ? ` · 🔔 ${notes.length}` : ""}` });
     playSound("turn");
     setSelected(null);
 
@@ -1639,7 +1656,7 @@ export default function Civilization() {
       if (!civAlive[0]) { setGameOver({ result: "lose", text: "Вашу цивілізацію стерто з лиця землі." }); return; }
       if (ENEMY_CIVS.every((c) => !civAlive[c])) { setGameOver({ result: "win", text: "Усі суперники знищені. Світ ваш!" }); return; }
     }
-    if (turn + 1 >= END_TURN) {
+    if (turn + 1 >= gameLen) {
       const score = (civ) =>
         cities.filter((c) => c.civ === civ).reduce((q, c) => q + c.pop, 0) +
         cities.filter((c) => c.civ === civ).length * 3 +
@@ -1691,6 +1708,9 @@ export default function Civilization() {
 
   const viewYields = viewCity ? cityYields(viewCity, world, state.improvements, state.wondersBuilt, state.government) : null;
   const viewUnhappy = viewCity ? cityUnhappy(viewCity, state.wondersBuilt) : 0;
+  const cityGarrison = viewCity
+    ? state.units.filter((u) => u.civ === 0 && !u.aboard && u.x === viewCity.x && u.y === viewCity.y)
+    : [];
   const curTile = selUnit && !selUnit.aboard ? state.improvements[idx(selUnit.x, selUnit.y)] || {} : {};
   const curTerr = selUnit ? tiles[selUnit.y][selUnit.x] : null;
   const shipCargo = selUnit && isShip(selUnit.type) ? state.units.filter((q) => q.aboard === selUnit.id) : [];
@@ -1825,6 +1845,22 @@ export default function Civilization() {
         </div>
       )}
 
+      {setupMode && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(6,6,16,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ ...panel, width: 380, maxWidth: "92vw" }}>
+            <div style={{ ...panelTitle, marginBottom: 4 }}>🏛 Нова гра — оберіть тривалість</div>
+            <div style={{ fontSize: 11.5, color: "#9a9ac4", marginBottom: 12 }}>Чим довша гра, тим повільніше спливає час і більше ходів до фіналу (2000 рік).</div>
+            {GAME_MODES.map((m) => (
+              <button key={m.turns} style={{ ...btn, width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", marginBottom: 7, padding: "10px 14px" }}
+                onClick={() => startGame(m.turns)}>
+                <span style={{ fontWeight: 700 }}>{m.name}</span>
+                <span style={{ fontSize: 11, opacity: 0.85 }}>{m.turns} ходів · {m.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {slotsView && (
         <div onClick={() => setSlotsView(null)} style={{ position: "fixed", inset: 0, background: "rgba(6,6,16,0.6)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ ...panel, width: 360, maxWidth: "92vw" }}>
@@ -1839,7 +1875,7 @@ export default function Civilization() {
                 <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", marginBottom: 5, background: "rgba(255,255,255,0.04)", borderRadius: 6 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 12.5 }}>{title}</div>
-                    <div style={{ fontSize: 10.5, color: "#8a8ab8" }}>{meta ? `Хід ${meta.turn} · ${yearOf(meta.turn)}` : "порожньо"}</div>
+                    <div style={{ fontSize: 10.5, color: "#8a8ab8" }}>{meta ? `Хід ${meta.turn} · ${yearOf(meta.turn, meta.gameLen)}` : "порожньо"}</div>
                   </div>
                   {slotsView === "save"
                     ? (s === "auto"
@@ -1860,7 +1896,7 @@ export default function Civilization() {
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: 3, background: "linear-gradient(90deg,#ffe680,#f5cf3d,#e8a93d)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", textShadow: "0 0 18px rgba(245,207,61,0.25)" }}>CIVILIZATION</span>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <span style={chip}>🗓 {state.turn}/{END_TURN} · {yearOf(state.turn)}</span>
+          <span style={chip}>🗓 {state.turn}/{gameLen} · {yearOf(state.turn, gameLen)}</span>
           <span style={chip}>{state.anarchy ? "🔥 Анархія" : `👑 ${GOVERNMENTS[state.government].name}`}</span>
           <span style={chip}>🏛 {myCities.length}</span>
           <span style={chip}>💰 {state.gold} <span style={{ color: "#7fc97f" }}>+{income}</span>{mercUpkeep > 0 && <span style={{ color: "#e87070" }}> −{mercUpkeep}</span>}</span>
@@ -2077,6 +2113,21 @@ export default function Civilization() {
               <Bar value={viewCity.shields} max={buildTarget.cost} color="#d8923c" />
               {viewCity.buildings.length > 0 && (
                 <div style={{ fontSize: 11, color: "#8a8ab8", marginTop: 8 }}>🏗 {viewCity.buildings.map((b) => BUILDINGS[b].name).join(" · ")}</div>
+              )}
+              {cityGarrison.length > 0 && (
+                <div style={{ marginTop: 9 }}>
+                  <div style={{ fontSize: 11, color: "#9a9ac4", marginBottom: 4 }}>🛡 Гарнізон ({cityGarrison.length}) — клік, щоб обрати й рухати:</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {cityGarrison.map((u) => (
+                      <button key={u.id}
+                        title={`${UNIT_TYPES[u.type].name}${u.vet ? " ★" : ""} · ⚔${UNIT_TYPES[u.type].att} 🛡${UNIT_TYPES[u.type].def} 👣${u.moves}${u.fortified ? " · укріплений" : ""}`}
+                        style={{ ...sbtn, background: selected === u.id ? "#3a7a30" : "#2c4d80", borderColor: selected === u.id ? "#5aa050" : "#4a6aa0" }}
+                        onClick={() => { setSelected(u.id); ensureTileVisible(u.x, u.y, false); }}>
+                        {UNIT_TYPES[u.type].icon} {UNIT_TYPES[u.type].name}{u.vet ? "★" : ""}{u.fortified ? " 🛡" : u.moves > 0 ? "" : " ⏸"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
               <div style={{ fontSize: 11, color: "#9a9ac4", margin: "10px 0 4px" }}>Замовити юніти:</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
