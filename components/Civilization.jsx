@@ -1143,7 +1143,7 @@ export default function Civilization() {
                   const bx = x + dx2, by = y + dy2;
                   if (bx < 0 || bx >= MAP_W || by < 0 || by >= MAP_H) continue;
                   if (WATER(tiles[by][bx])) continue;
-                  units2 = [...units2, { id: nextId++, civ: BARB, type: st.turn < 30 ? "warrior" : "legion", x: bx, y: by, moves: 0, fortified: false, vet: false, aboard: null }];
+                  units2 = [...units2, { id: nextId++, civ: BARB, type: st.turn < 30 * (gameLen / END_TURN) ? "warrior" : "legion", x: bx, y: by, moves: 0, fortified: false, vet: false, aboard: null }];
                   spawned++;
                 }
                 hm.push("🛖 Засідка! З хатини вискакують варвари!");
@@ -1334,6 +1334,8 @@ export default function Civilization() {
     let wondersBuilt = { ...st.wondersBuilt };
     const improvements = st.improvements;
     const turn = st.turn;
+    // stretch AI/barbarian progression proportionally to the chosen game length (140 = baseline)
+    const techScale = gameLen / END_TURN;
     let huts = new Set(st.huts);
 
     // марш юнітів за прокладеними маршрутами
@@ -1374,7 +1376,7 @@ export default function Civilization() {
 
     // періодичні набіги варварів
     if (turn >= 10 && turn % 7 === 0) {
-      const barbType = turn < 30 ? "warrior" : turn < 70 ? "legion" : "knight";
+      const barbType = turn < 30 * techScale ? "warrior" : turn < 70 * techScale ? "legion" : "knight";
       for (let tries = 0; tries < 200; tries++) {
         const bx = 1 + Math.floor(Math.random() * (MAP_W - 2));
         const by = 1 + Math.floor(Math.random() * (MAP_H - 2));
@@ -1511,7 +1513,7 @@ export default function Civilization() {
     }
 
     // AI
-    const tier = [...AI_TIERS].reverse().find((t) => turn >= t.turn).units;
+    const tier = [...AI_TIERS].reverse().find((t) => turn >= t.turn * techScale).units;
     const playerThings = [
       ...units.filter((u) => u.civ === 0 && !isShip(u.type)).map((u) => ({ x: u.x, y: u.y })),
       ...cities.filter((c) => c.civ === 0).map((c) => ({ x: c.x, y: c.y })),
