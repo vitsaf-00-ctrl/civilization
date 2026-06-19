@@ -811,12 +811,14 @@ export default function Civilization() {
       if (!state.explored.has(idx(c.x, c.y))) return;
       const px = c.x * TILE, py = c.y * TILE;
       ctx.fillStyle = CIVS_DEF[c.civ].color;
+      ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 7; ctx.shadowOffsetY = 2;
       ctx.beginPath();
       ctx.moveTo(px + 3, py + TILE - 3);
       ctx.lineTo(px + 3, py + 9); ctx.lineTo(px + 7, py + 9); ctx.lineTo(px + 7, py + 5);
       ctx.lineTo(px + TILE - 7, py + 5); ctx.lineTo(px + TILE - 7, py + 9); ctx.lineTo(px + TILE - 3, py + 9);
       ctx.lineTo(px + TILE - 3, py + TILE - 3);
       ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
       ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.stroke();
       if (c.buildings.includes("walls")) {
         ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
@@ -847,6 +849,7 @@ export default function Civilization() {
       if (!state.explored.has(idx(u.x, u.y))) return;
       const px = u.x * TILE, py = u.y * TILE;
       ctx.fillStyle = CIVS_DEF[u.civ].color;
+      ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
       if (isShip(u.type)) {
         ctx.beginPath();
         ctx.moveTo(px + 4, py + TILE / 2 + 3);
@@ -860,9 +863,11 @@ export default function Civilization() {
         ctx.lineTo(px + TILE / 2 + 8, py + 11);
         ctx.lineTo(px + TILE / 2 + 1, py + 14);
         ctx.closePath(); ctx.fill();
+        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
         ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.stroke();
       } else {
         ctx.beginPath(); ctx.arc(px + TILE / 2, py + TILE / 2, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
         ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.lineWidth = 1;
         ctx.fillStyle = "#000"; ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
         ctx.fillText(UNIT_TYPES[u.type].icon + (u.vet ? "*" : ""), px + TILE / 2, py + TILE / 2 + 4);
@@ -909,9 +914,10 @@ export default function Civilization() {
     }
 
     if (selU && !selU.aboard) {
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#ffe27a"; ctx.lineWidth = 2.5;
+      ctx.shadowColor = "rgba(255,210,90,0.85)"; ctx.shadowBlur = 9;
       ctx.strokeRect(selU.x * TILE + 1.5, selU.y * TILE + 1.5, TILE - 3, TILE - 3);
-      ctx.lineWidth = 1;
+      ctx.shadowBlur = 0; ctx.lineWidth = 1;
     }
     if (hover && state.explored.has(idx(hover.x, hover.y))) {
       ctx.strokeStyle = "rgba(255,255,255,0.5)";
@@ -1790,24 +1796,25 @@ export default function Civilization() {
 
   // ============ STYLES ============ (glassmorphism design system)
   const panel = {
-    background: "linear-gradient(160deg, rgba(40,44,86,0.55), rgba(20,22,46,0.5))",
-    border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, padding: "13px 15px", color: "#dcdcf0",
-    backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-    boxShadow: "0 10px 32px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.07)",
+    background: "linear-gradient(158deg, rgba(48,54,102,0.62), rgba(17,19,40,0.6))",
+    border: "1px solid rgba(150,170,235,0.16)", borderRadius: 14, padding: "14px 16px", color: "#dde0f5",
+    backdropFilter: "blur(16px) saturate(1.25)", WebkitBackdropFilter: "blur(16px) saturate(1.25)",
+    boxShadow: "0 16px 44px rgba(0,0,0,0.44), inset 0 1px 0 rgba(255,255,255,0.09)",
   };
-  const panelTitle = { fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: "#9a9ad8", marginBottom: 9, fontWeight: 700 };
+  const panelTitle = { fontSize: 10.5, letterSpacing: 1.6, textTransform: "uppercase", color: "#aab0ea", marginBottom: 10, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 };
   const btn = {
-    background: "linear-gradient(180deg, rgba(78,112,186,0.95), rgba(42,74,128,0.95))",
-    color: "#fff", border: "1px solid rgba(130,168,236,0.45)", borderRadius: 10, padding: "7px 13px",
-    cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 600,
-    boxShadow: "0 3px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.14)",
+    background: "linear-gradient(180deg, #5a82c8, #34568f)",
+    color: "#fff", border: "1px solid rgba(155,190,248,0.5)", borderRadius: 10, padding: "8px 14px",
+    cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 650, letterSpacing: 0.2,
+    boxShadow: "0 4px 13px rgba(18,28,58,0.42), inset 0 1px 0 rgba(255,255,255,0.18)",
   };
-  const sbtn = { ...btn, padding: "5px 10px", fontSize: 11, borderRadius: 8 };
+  const sbtn = { ...btn, padding: "5px 11px", fontSize: 11, borderRadius: 9, fontWeight: 600 };
   const chip = {
-    display: "inline-flex", alignItems: "center", gap: 5,
-    background: "rgba(255,255,255,0.055)", border: "1px solid rgba(255,255,255,0.11)",
-    borderRadius: 20, padding: "5px 13px", fontSize: 12.5,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+    display: "inline-flex", alignItems: "center", gap: 6,
+    background: "linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.028))",
+    border: "1px solid rgba(255,255,255,0.13)",
+    borderRadius: 11, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, color: "#e8e9fa",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
   };
 
   const Bar = ({ value, max, color }) => (
@@ -1819,19 +1826,26 @@ export default function Civilization() {
   const buildTarget = viewCity ? (UNIT_TYPES[viewCity.building] || BUILDINGS[viewCity.building] || WONDERS[viewCity.building]) : null;
 
   return (
-    <div className="civ-root" style={{ background: "radial-gradient(1200px 620px at 18% -12%, #1d2456 0%, transparent 58%), radial-gradient(1000px 520px at 102% -6%, #321a4e 0%, transparent 52%), linear-gradient(180deg,#08080f 0%,#0c0c1a 100%)", minHeight: "100vh", padding: 14, fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#e4e4f4" }}>
+    <div className="civ-root" style={{ background: "radial-gradient(1100px 560px at 12% -14%, #232c66 0%, transparent 56%), radial-gradient(950px 520px at 104% -8%, #3a1d56 0%, transparent 52%), radial-gradient(900px 760px at 50% 124%, #102047 0%, transparent 58%), linear-gradient(180deg,#070710 0%,#0b0b18 100%)", minHeight: "100vh", fontFamily: "system-ui, 'Segoe UI', Roboto, sans-serif", color: "#e6e6f6" }}>
       <style>{`@keyframes civPulse{0%{box-shadow:0 0 0 0 rgba(232,184,77,.45)}70%{box-shadow:0 0 0 9px rgba(232,184,77,0)}100%{box-shadow:0 0 0 0 rgba(232,184,77,0)}}
 @keyframes civToast{0%{opacity:0;transform:translateY(14px)}10%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(8px)}}
-.civ-root button{transition:filter .13s ease, transform .1s ease, box-shadow .13s ease}
-.civ-root button:not(:disabled):hover{filter:brightness(1.14) saturate(1.05)}
-.civ-root button:not(:disabled):active{transform:translateY(1px); filter:brightness(0.95)}
+@keyframes civPop{0%{opacity:0;transform:translateY(10px) scale(.985)}100%{opacity:1;transform:none}}
+@keyframes civFade{0%{opacity:0}100%{opacity:1}}
+.civ-root{padding:14px; -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100%; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased}
+.civ-root *{box-sizing:border-box}
+.civ-card{animation:civPop .26s cubic-bezier(.2,.8,.25,1) both}
+.civ-overlay{animation:civFade .18s ease both}
+.civ-root button{transition:filter .14s ease, transform .08s ease, box-shadow .14s ease; -webkit-tap-highlight-color:transparent}
+.civ-root button:not(:disabled):hover{filter:brightness(1.12) saturate(1.06); box-shadow:0 7px 20px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.22)}
+.civ-root button:not(:disabled):active{transform:translateY(1px); filter:brightness(0.96)}
 .civ-root button:focus-visible{outline:2px solid #f5cf3d; outline-offset:2px}
-.civ-root input[type=range]{accent-color:#6d9ce0; cursor:pointer}
+.civ-root input[type=range]{accent-color:#7aa6ec; cursor:pointer; height:5px}
 .civ-root canvas{transition:filter .15s ease}
-.civ-root ::-webkit-scrollbar{width:11px;height:11px}
-.civ-root ::-webkit-scrollbar-thumb{background:rgba(124,148,212,0.32); border-radius:8px; border:2px solid transparent; background-clip:padding-box}
-.civ-root ::-webkit-scrollbar-thumb:hover{background:rgba(124,148,212,0.5); background-clip:padding-box}
-.civ-root ::-webkit-scrollbar-track{background:transparent}`}</style>
+.civ-root ::-webkit-scrollbar{width:10px;height:10px}
+.civ-root ::-webkit-scrollbar-thumb{background:rgba(124,148,212,0.34); border-radius:8px; border:2px solid transparent; background-clip:padding-box}
+.civ-root ::-webkit-scrollbar-thumb:hover{background:rgba(124,148,212,0.55); background-clip:padding-box}
+.civ-root ::-webkit-scrollbar-track{background:transparent}
+@media (max-width:680px){.civ-root{padding:8px}}`}</style>
       {toast && (
         <div key={toast.id} style={{
           position: "fixed", right: 18, bottom: 18, zIndex: 50, pointerEvents: "none",
@@ -1846,15 +1860,19 @@ export default function Civilization() {
       )}
 
       {setupMode && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(6,6,16,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ ...panel, width: 380, maxWidth: "92vw" }}>
-            <div style={{ ...panelTitle, marginBottom: 4 }}>🏛 Нова гра — оберіть тривалість</div>
-            <div style={{ fontSize: 11.5, color: "#9a9ac4", marginBottom: 12 }}>Чим довша гра, тим повільніше спливає час і більше ходів до фіналу (2000 рік).</div>
-            {GAME_MODES.map((m) => (
-              <button key={m.turns} style={{ ...btn, width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", marginBottom: 7, padding: "10px 14px" }}
+        <div className="civ-overlay" style={{ position: "fixed", inset: 0, background: "rgba(5,5,14,0.74)", backdropFilter: "blur(9px)", WebkitBackdropFilter: "blur(9px)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div className="civ-card" style={{ ...panel, width: 400, maxWidth: "92vw", padding: "20px 22px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 4 }}>
+              <span style={{ fontSize: 26, filter: "drop-shadow(0 0 10px rgba(245,207,61,0.45))" }}>🏛</span>
+              <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: 2.5, background: "linear-gradient(90deg,#ffe680,#f5cf3d,#e8a93d)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" }}>CIVILIZATION</span>
+            </div>
+            <div style={{ ...panelTitle, marginBottom: 4 }}>Нова гра — оберіть тривалість</div>
+            <div style={{ fontSize: 11.5, color: "#9a9ac4", marginBottom: 14 }}>Чим довша гра, тим повільніше спливає час і більше ходів до фіналу (2000 рік).</div>
+            {GAME_MODES.map((m, i) => (
+              <button key={m.turns} className="civ-card" style={{ ...btn, animationDelay: `${0.04 * i}s`, width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", marginBottom: 8, padding: "12px 15px", fontSize: 13 }}
                 onClick={() => startGame(m.turns)}>
-                <span style={{ fontWeight: 700 }}>{m.name}</span>
-                <span style={{ fontSize: 11, opacity: 0.85 }}>{m.turns} ходів · {m.desc}</span>
+                <span style={{ fontWeight: 750, letterSpacing: 0.3 }}>{m.name}</span>
+                <span style={{ fontSize: 11, opacity: 0.86, fontWeight: 600 }}>{m.turns} ходів · {m.desc}</span>
               </button>
             ))}
           </div>
@@ -1862,8 +1880,8 @@ export default function Civilization() {
       )}
 
       {slotsView && (
-        <div onClick={() => setSlotsView(null)} style={{ position: "fixed", inset: 0, background: "rgba(6,6,16,0.6)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ ...panel, width: 360, maxWidth: "92vw" }}>
+        <div className="civ-overlay" onClick={() => setSlotsView(null)} style={{ position: "fixed", inset: 0, background: "rgba(5,5,14,0.64)", backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div className="civ-card" onClick={(e) => e.stopPropagation()} style={{ ...panel, width: 360, maxWidth: "92vw" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ ...panelTitle, marginBottom: 0 }}>{slotsView === "save" ? "💾 Зберегти у слот" : "📂 Завантажити слот"}</span>
               <button style={{ ...sbtn, background: "#2a2a48", borderColor: "#46466e" }} onClick={() => setSlotsView(null)}>✕</button>
