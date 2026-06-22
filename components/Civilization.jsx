@@ -37,17 +37,17 @@ const SPECIALS = {
 };
 
 const UNIT_TYPES = {
-  settler:  { name: "Поселенець", att: 0, def: 1, move: 1, cost: 40, icon: "S", tech: null },
-  diplomat: { name: "Дипломат",   att: 0, def: 1, move: 2, cost: 30, icon: "D", tech: "writing" },
-  warrior:  { name: "Воїн",       att: 1, def: 1, move: 1, cost: 10, icon: "W", tech: null },
-  phalanx:  { name: "Фаланга",    att: 1, def: 2, move: 1, cost: 20, icon: "P", tech: "bronze" },
-  horseman: { name: "Вершник",    att: 2, def: 1, move: 2, cost: 20, icon: "H", tech: "horseback" },
-  archer:   { name: "Лучник",     att: 3, def: 2, move: 1, cost: 30, icon: "A", tech: "warrior_code" },
-  legion:   { name: "Легіон",     att: 4, def: 2, move: 1, cost: 40, icon: "L", tech: "iron" },
-  chariot:  { name: "Колісниця",  att: 4, def: 1, move: 2, cost: 40, icon: "C", tech: "wheel" },
-  catapult: { name: "Катапульта", att: 6, def: 1, move: 1, cost: 50, icon: "K", tech: "mathematics" },
-  knight:   { name: "Лицар",      att: 4, def: 2, move: 2, cost: 60, icon: "R", tech: "chivalry" },
-  trireme:  { name: "Трирема",    att: 1, def: 1, move: 3, cost: 40, icon: "T", tech: "map_making", sea: true, cap: 2 },
+  settler:  { name: "Поселенець", att: 0, def: 1, move: 1, cost: 40, icon: "S", emoji: "🛖", tech: null },
+  diplomat: { name: "Дипломат",   att: 0, def: 1, move: 2, cost: 30, icon: "D", emoji: "🎩", tech: "writing" },
+  warrior:  { name: "Воїн",       att: 1, def: 1, move: 1, cost: 10, icon: "W", emoji: "🪓", tech: null },
+  phalanx:  { name: "Фаланга",    att: 1, def: 2, move: 1, cost: 20, icon: "P", emoji: "🛡️", tech: "bronze" },
+  horseman: { name: "Вершник",    att: 2, def: 1, move: 2, cost: 20, icon: "H", emoji: "🐎", tech: "horseback" },
+  archer:   { name: "Лучник",     att: 3, def: 2, move: 1, cost: 30, icon: "A", emoji: "🏹", tech: "warrior_code" },
+  legion:   { name: "Легіон",     att: 4, def: 2, move: 1, cost: 40, icon: "L", emoji: "⚔️", tech: "iron" },
+  chariot:  { name: "Колісниця",  att: 4, def: 1, move: 2, cost: 40, icon: "C", emoji: "🛞", tech: "wheel" },
+  catapult: { name: "Катапульта", att: 6, def: 1, move: 1, cost: 50, icon: "K", emoji: "🪨", tech: "mathematics" },
+  knight:   { name: "Лицар",      att: 4, def: 2, move: 2, cost: 60, icon: "R", emoji: "🏇", tech: "chivalry" },
+  trireme:  { name: "Трирема",    att: 1, def: 1, move: 3, cost: 40, icon: "T", emoji: "⛵", tech: "map_making", sea: true, cap: 2 },
 };
 const isShip = (t) => !!UNIT_TYPES[t].sea;
 
@@ -531,53 +531,45 @@ function paintCity(ctx, c, px, py, color, hasWalls) {
   ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 }
 
-// Unit token: a shield for military, a round token for civilians, a sailing boat for ships.
+// Rounded-rect path helper (older canvases lack ctx.roundRect).
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// Unit token: a civ-coloured chit with the unit's emoji "portrait" on top.
 function paintUnit(ctx, u, px, py, color) {
   const T = TILE, cx = px + T / 2, cy = py + T / 2;
+  const ship = isShip(u.type);
   ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
 
-  if (isShip(u.type)) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(px + 4, cy + 3); ctx.lineTo(px + T - 4, cy + 3);
-    ctx.lineTo(px + T - 8, cy + 9); ctx.lineTo(px + 8, cy + 9);
-    ctx.closePath(); ctx.fill();
-    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-    ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.stroke();
-    ctx.strokeStyle = "#3a2a17"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(cx, py + 5); ctx.lineTo(cx, cy + 3); ctx.stroke(); ctx.lineWidth = 1;
-    ctx.fillStyle = "#f5f1e6";
-    ctx.beginPath(); ctx.moveTo(cx + 1, py + 6); ctx.lineTo(cx + 8, py + 12); ctx.lineTo(cx + 1, py + 15); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
-    return;
-  }
-
-  const civilian = UNIT_TYPES[u.type].att === 0;
-  const shieldPath = () => {
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 10);
-    ctx.lineTo(cx + 8, cy - 6);
-    ctx.lineTo(cx + 8, cy + 2);
-    ctx.quadraticCurveTo(cx + 8, cy + 8, cx, cy + 11);
-    ctx.quadraticCurveTo(cx - 8, cy + 8, cx - 8, cy + 2);
-    ctx.lineTo(cx - 8, cy - 6);
-    ctx.closePath();
-  };
+  // civ-coloured base plate
   ctx.fillStyle = color;
-  if (civilian) { ctx.beginPath(); ctx.arc(cx, cy, 9, 0, 7); ctx.fill(); }
-  else { shieldPath(); ctx.fill(); }
+  if (ship) roundRectPath(ctx, cx - 13, cy - 8, 26, 16, 6);
+  else roundRectPath(ctx, cx - 10, cy - 10, 20, 20, 6);
+  ctx.fill();
   ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-  ctx.fillStyle = "rgba(255,255,255,0.28)";
-  ctx.beginPath(); ctx.ellipse(cx - 2, cy - 4, civilian ? 4 : 3, civilian ? 2.5 : 2, 0, 0, 7); ctx.fill();
-
+  // top gloss + dark rim
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  if (ship) roundRectPath(ctx, cx - 13, cy - 8, 26, 6, 4);
+  else roundRectPath(ctx, cx - 10, cy - 10, 20, 7, 4);
+  ctx.fill();
   ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.5;
-  if (civilian) { ctx.beginPath(); ctx.arc(cx, cy, 9, 0, 7); ctx.stroke(); }
-  else { shieldPath(); ctx.stroke(); }
-  ctx.lineWidth = 1;
+  if (ship) roundRectPath(ctx, cx - 13, cy - 8, 26, 16, 6);
+  else roundRectPath(ctx, cx - 10, cy - 10, 20, 20, 6);
+  ctx.stroke(); ctx.lineWidth = 1;
 
-  ctx.fillStyle = "#10100f"; ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
-  ctx.fillText(UNIT_TYPES[u.type].icon, cx, cy + 4);
+  // emoji portrait
+  ctx.font = "16px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(UNIT_TYPES[u.type].emoji, cx, cy + 1);
+  ctx.textBaseline = "alphabetic";
 }
 
 // ============ COMPONENT ============
@@ -2196,8 +2188,8 @@ export default function Civilization() {
             <div style={panel}>
               <div style={panelTitle}>Юніт{selUnit.aboard ? " · на борту" : ""}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ width: 34, height: 34, borderRadius: "50%", background: CIVS_DEF[0].color, color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15 }}>
-                  {UNIT_TYPES[selUnit.type].icon}
+                <span style={{ width: 34, height: 34, borderRadius: 8, background: CIVS_DEF[0].color, color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18 }}>
+                  {UNIT_TYPES[selUnit.type].emoji}
                 </span>
                 <div>
                   <div style={{ fontWeight: 700 }}>{UNIT_TYPES[selUnit.type].name}{selUnit.vet ? " ★" : ""}{selUnit.merc ? " 💰 найманець" : ""}</div>
@@ -2283,7 +2275,7 @@ export default function Civilization() {
                         title={`${UNIT_TYPES[u.type].name}${u.vet ? " ★" : ""} · ⚔${UNIT_TYPES[u.type].att} 🛡${UNIT_TYPES[u.type].def} 👣${u.moves}${u.fortified ? " · укріплений" : ""}`}
                         style={{ ...sbtn, background: selected === u.id ? "#3a7a30" : "#2c4d80", borderColor: selected === u.id ? "#5aa050" : "#4a6aa0" }}
                         onClick={() => { setSelected(u.id); ensureTileVisible(u.x, u.y, false); }}>
-                        {UNIT_TYPES[u.type].icon} {UNIT_TYPES[u.type].name}{u.vet ? "★" : ""}{u.fortified ? " 🛡" : u.moves > 0 ? "" : " ⏸"}
+                        {UNIT_TYPES[u.type].emoji} {UNIT_TYPES[u.type].name}{u.vet ? "★" : ""}{u.fortified ? " 🛡" : u.moves > 0 ? "" : " ⏸"}
                       </button>
                     ))}
                   </div>
