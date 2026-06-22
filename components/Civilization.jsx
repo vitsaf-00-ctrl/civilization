@@ -383,6 +383,203 @@ function enemyZOC(x, y, units, cities) {
   return false;
 }
 
+// ============ CANVAS ART ============
+// Richer per-tile terrain: subtle depth shading plus hand-drawn detail.
+function paintTerrain(ctx, tk, px, py) {
+  const T = TILE;
+  const t = TERRAIN[tk];
+  ctx.fillStyle = t.color;
+  ctx.fillRect(px, py, T, T);
+
+  if (tk === "ocean" || tk === "coast") {
+    // depth: darker toward the bottom, sun-glint near the top
+    ctx.fillStyle = "rgba(0,10,50,0.18)";
+    ctx.fillRect(px, py + T * 0.55, T, T * 0.45);
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    ctx.fillRect(px, py, T, T * 0.4);
+    ctx.strokeStyle = tk === "coast" ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.11)";
+    ctx.lineWidth = 1;
+    const rows = tk === "coast" ? [12, 22] : [8, 17, 25];
+    rows.forEach((ry, ri) => {
+      const off = (ri % 2) * 7;
+      ctx.beginPath();
+      ctx.moveTo(px + 2 + off, py + ry);
+      ctx.quadraticCurveTo(px + 7 + off, py + ry - 3, px + 12 + off, py + ry);
+      ctx.quadraticCurveTo(px + 17 + off, py + ry + 3, px + 22 + off, py + ry);
+      ctx.stroke();
+    });
+    ctx.lineWidth = 1;
+    return;
+  }
+
+  // land tiles: faint top highlight + bottom shadow give a gentle 3D feel
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fillRect(px, py, T, 3);
+  ctx.fillStyle = "rgba(0,0,0,0.10)";
+  ctx.fillRect(px, py + T - 4, T, 4);
+
+  if (tk === "grass") {
+    [[6, 9], [13, 21], [20, 12], [25, 23], [10, 27]].forEach(([ox, oy], i) => {
+      ctx.strokeStyle = i % 2 ? "rgba(20,90,20,0.55)" : "rgba(255,255,255,0.20)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px + ox, py + oy); ctx.lineTo(px + ox - 2, py + oy - 4);
+      ctx.moveTo(px + ox, py + oy); ctx.lineTo(px + ox + 2, py + oy - 4);
+      ctx.stroke();
+    });
+    ctx.lineWidth = 1;
+  } else if (tk === "plains") {
+    ctx.strokeStyle = "rgba(120,90,20,0.38)"; ctx.lineWidth = 1;
+    [[5, 10], [14, 16], [8, 22], [20, 12], [23, 24]].forEach(([ox, oy]) => {
+      ctx.beginPath(); ctx.moveTo(px + ox, py + oy); ctx.lineTo(px + ox + 5, py + oy); ctx.stroke();
+    });
+    ctx.fillStyle = "rgba(255,255,255,0.13)";
+    ctx.fillRect(px + 6, py + 8, 1.5, 1.5); ctx.fillRect(px + 18, py + 19, 1.5, 1.5);
+    ctx.lineWidth = 1;
+  } else if (tk === "forest") {
+    [[8, 21], [18, 16], [12, 27], [23, 25]].forEach(([bx, by]) => {
+      ctx.fillStyle = "#5b3a1a";
+      ctx.fillRect(px + bx - 1, py + by - 2, 2, 4);
+      for (let layer = 0; layer < 3; layer++) {
+        const w = 7 - layer * 1.6, ty = by - 5 - layer * 4;
+        ctx.fillStyle = layer === 2 ? "#46c554" : layer === 1 ? "#239a36" : "#0f6b22";
+        ctx.beginPath();
+        ctx.moveTo(px + bx, py + ty - 2);
+        ctx.lineTo(px + bx + w, py + ty + 5);
+        ctx.lineTo(px + bx - w, py + ty + 5);
+        ctx.closePath(); ctx.fill();
+      }
+    });
+  } else if (tk === "hills") {
+    [[10, 21, 7], [21, 23, 6]].forEach(([cx, cy, r]) => {
+      ctx.fillStyle = "#bd9340";
+      ctx.beginPath(); ctx.arc(px + cx, py + cy, r, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = "rgba(255,240,200,0.40)";
+      ctx.beginPath(); ctx.arc(px + cx - 1.5, py + cy, r - 3, Math.PI, Math.PI * 1.6); ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.16)";
+      ctx.fillRect(px + cx - r, py + cy - 1, r * 2, 2);
+    });
+  } else if (tk === "mountain") {
+    ctx.fillStyle = "#7d7d86";
+    ctx.beginPath(); ctx.moveTo(px + 20, py + 7); ctx.lineTo(px + 29, py + 25); ctx.lineTo(px + 12, py + 25); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#9a9aa3";
+    ctx.beginPath(); ctx.moveTo(px + 12, py + 5); ctx.lineTo(px + 23, py + 26); ctx.lineTo(px + 3, py + 26); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,0.20)";
+    ctx.beginPath(); ctx.moveTo(px + 12, py + 5); ctx.lineTo(px + 23, py + 26); ctx.lineTo(px + 12, py + 26); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#f4f4fa";
+    ctx.beginPath(); ctx.moveTo(px + 12, py + 5); ctx.lineTo(px + 16, py + 12); ctx.lineTo(px + 8, py + 12); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(px + 20, py + 7); ctx.lineTo(px + 23, py + 12); ctx.lineTo(px + 17, py + 12); ctx.closePath(); ctx.fill();
+  } else if (tk === "desert") {
+    ctx.strokeStyle = "rgba(180,140,40,0.5)"; ctx.lineWidth = 1.5;
+    [[5, 13, 16], [4, 23, 21]].forEach(([sx, sy, w]) => {
+      ctx.beginPath();
+      ctx.moveTo(px + sx, py + sy);
+      ctx.quadraticCurveTo(px + sx + w / 2, py + sy - 4, px + sx + w, py + sy);
+      ctx.stroke();
+    });
+    ctx.lineWidth = 1;
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    ctx.beginPath(); ctx.arc(px + 23, py + 9, 2, 0, 7); ctx.fill();
+  }
+}
+
+// A small settlement that grows with population, drawn in the civ colour.
+function paintCity(ctx, c, px, py, color, hasWalls) {
+  const T = TILE;
+  const big = c.pop >= 6, mid = c.pop >= 3;
+  // ground shadow
+  ctx.fillStyle = "rgba(0,0,0,0.32)";
+  ctx.beginPath(); ctx.ellipse(px + T / 2, py + T - 5, 12, 4, 0, 0, 7); ctx.fill();
+
+  if (hasWalls) {
+    // stone rampart hugging the tile
+    ctx.fillStyle = "#8d8a82";
+    ctx.fillRect(px + 2, py + T - 9, T - 4, 5);
+    ctx.fillStyle = "#b8b4aa";
+    for (let bx = 3; bx < T - 4; bx += 5) ctx.fillRect(px + bx, py + T - 11, 3, 3);
+    ctx.strokeStyle = "rgba(0,0,0,0.45)"; ctx.strokeRect(px + 2.5, py + T - 9.5, T - 5, 5);
+  }
+
+  ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+  const baseY = py + T - (hasWalls ? 10 : 7);
+  const blk = (bx, bw, bh, roof) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(px + bx, baseY - bh, bw, bh);
+    ctx.fillStyle = "rgba(0,0,0,0.24)";
+    ctx.fillRect(px + bx + bw - 2, baseY - bh, 2, bh);
+    ctx.fillStyle = "rgba(255,255,255,0.20)";
+    ctx.fillRect(px + bx, baseY - bh, 2, bh);
+    if (roof) {
+      ctx.fillStyle = "rgba(0,0,0,0.42)";
+      ctx.beginPath();
+      ctx.moveTo(px + bx - 1, baseY - bh);
+      ctx.lineTo(px + bx + bw / 2, baseY - bh - 4);
+      ctx.lineTo(px + bx + bw + 1, baseY - bh);
+      ctx.closePath(); ctx.fill();
+    }
+  };
+  blk(6, 7, 9, true);
+  blk(14, 6, 12, true);
+  blk(21, 6, 8, true);
+  if (mid) blk(10, 5, 6, false);
+  if (big) {
+    ctx.fillStyle = color;
+    ctx.fillRect(px + 14, py + 6, 6, 9);
+    ctx.fillStyle = "rgba(0,0,0,0.42)";
+    ctx.beginPath(); ctx.moveTo(px + 13, py + 6); ctx.lineTo(px + 17, py + 2); ctx.lineTo(px + 21, py + 6); ctx.closePath(); ctx.fill();
+  }
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+}
+
+// Unit token: a shield for military, a round token for civilians, a sailing boat for ships.
+function paintUnit(ctx, u, px, py, color) {
+  const T = TILE, cx = px + T / 2, cy = py + T / 2;
+  ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+
+  if (isShip(u.type)) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(px + 4, cy + 3); ctx.lineTo(px + T - 4, cy + 3);
+    ctx.lineTo(px + T - 8, cy + 9); ctx.lineTo(px + 8, cy + 9);
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.stroke();
+    ctx.strokeStyle = "#3a2a17"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, py + 5); ctx.lineTo(cx, cy + 3); ctx.stroke(); ctx.lineWidth = 1;
+    ctx.fillStyle = "#f5f1e6";
+    ctx.beginPath(); ctx.moveTo(cx + 1, py + 6); ctx.lineTo(cx + 8, py + 12); ctx.lineTo(cx + 1, py + 15); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.stroke();
+    return;
+  }
+
+  const civilian = UNIT_TYPES[u.type].att === 0;
+  const shieldPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 10);
+    ctx.lineTo(cx + 8, cy - 6);
+    ctx.lineTo(cx + 8, cy + 2);
+    ctx.quadraticCurveTo(cx + 8, cy + 8, cx, cy + 11);
+    ctx.quadraticCurveTo(cx - 8, cy + 8, cx - 8, cy + 2);
+    ctx.lineTo(cx - 8, cy - 6);
+    ctx.closePath();
+  };
+  ctx.fillStyle = color;
+  if (civilian) { ctx.beginPath(); ctx.arc(cx, cy, 9, 0, 7); ctx.fill(); }
+  else { shieldPath(); ctx.fill(); }
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  ctx.fillStyle = "rgba(255,255,255,0.28)";
+  ctx.beginPath(); ctx.ellipse(cx - 2, cy - 4, civilian ? 4 : 3, civilian ? 2.5 : 2, 0, 0, 7); ctx.fill();
+
+  ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.5;
+  if (civilian) { ctx.beginPath(); ctx.arc(cx, cy, 9, 0, 7); ctx.stroke(); }
+  else { shieldPath(); ctx.stroke(); }
+  ctx.lineWidth = 1;
+
+  ctx.fillStyle = "#10100f"; ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+  ctx.fillText(UNIT_TYPES[u.type].icon, cx, cy + 4);
+}
+
 // ============ COMPONENT ============
 export default function Civilization() {
   const canvasRef = useRef(null);
@@ -674,43 +871,9 @@ export default function Civilization() {
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
       const i = idx(x, y);
       if (!state.explored.has(i)) { ctx.fillStyle = "#0b0b16"; ctx.fillRect(x * TILE, y * TILE, TILE, TILE); continue; }
-      const tk = tiles[y][x], t = TERRAIN[tk];
+      const tk = tiles[y][x];
       const px = x * TILE, py = y * TILE;
-      ctx.fillStyle = t.color;
-      ctx.fillRect(px, py, TILE, TILE);
-
-      if (tk === "ocean") {
-        ctx.strokeStyle = "rgba(255,255,255,0.06)";
-        ctx.beginPath(); ctx.moveTo(px + 4, py + 9); ctx.quadraticCurveTo(px + 9, py + 6, px + 14, py + 9); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(px + 10, py + 18); ctx.quadraticCurveTo(px + 15, py + 15, px + 20, py + 18); ctx.stroke();
-      } else if (tk === "coast") {
-        ctx.strokeStyle = "rgba(255,255,255,0.12)";
-        ctx.beginPath(); ctx.moveTo(px + 5, py + 13); ctx.quadraticCurveTo(px + 10, py + 10, px + 15, py + 13); ctx.stroke();
-      } else if (tk === "grass") {
-        ctx.fillStyle = "rgba(0,0,0,0.10)";
-        ctx.fillRect(px + 5, py + 7, 2, 4); ctx.fillRect(px + 15, py + 14, 2, 4); ctx.fillRect(px + 10, py + 19, 2, 4);
-      } else if (tk === "plains") {
-        ctx.strokeStyle = "rgba(0,0,0,0.12)";
-        ctx.beginPath(); ctx.moveTo(px + 4, py + 10); ctx.lineTo(px + 10, py + 10); ctx.moveTo(px + 13, py + 17); ctx.lineTo(px + 20, py + 17); ctx.stroke();
-      } else if (tk === "forest") {
-        ctx.fillStyle = "#0f6b22";
-        [[6, 7], [15, 11], [9, 16]].forEach(([ox, oy]) => {
-          ctx.beginPath(); ctx.moveTo(px + ox, py + oy + 7); ctx.lineTo(px + ox + 3, py + oy); ctx.lineTo(px + ox + 6, py + oy + 7); ctx.fill();
-        });
-      } else if (tk === "hills") {
-        ctx.fillStyle = "#e0c275";
-        ctx.beginPath(); ctx.arc(px + 9, py + 17, 6, Math.PI, 0); ctx.fill();
-        ctx.beginPath(); ctx.arc(px + 18, py + 19, 5, Math.PI, 0); ctx.fill();
-      } else if (tk === "mountain") {
-        ctx.fillStyle = "#94949a";
-        ctx.beginPath(); ctx.moveTo(px + 13, py + 4); ctx.lineTo(px + 22, py + 21); ctx.lineTo(px + 4, py + 21); ctx.fill();
-        ctx.fillStyle = "#e8e8ee";
-        ctx.beginPath(); ctx.moveTo(px + 13, py + 4); ctx.lineTo(px + 16, py + 10); ctx.lineTo(px + 10, py + 10); ctx.fill();
-      } else if (tk === "desert") {
-        ctx.fillStyle = "rgba(0,0,0,0.08)";
-        ctx.beginPath(); ctx.arc(px + 8, py + 14, 1.5, 0, 7); ctx.fill();
-        ctx.beginPath(); ctx.arc(px + 17, py + 9, 1.5, 0, 7); ctx.fill();
-      }
+      paintTerrain(ctx, tk, px, py);
 
       if (world.rivers.has(i)) {
         ctx.strokeStyle = "#3d8fd4"; ctx.lineWidth = 3; ctx.lineCap = "round";
@@ -812,21 +975,7 @@ export default function Civilization() {
     state.cities.forEach((c) => {
       if (!state.explored.has(idx(c.x, c.y))) return;
       const px = c.x * TILE, py = c.y * TILE;
-      ctx.fillStyle = CIVS_DEF[c.civ].color;
-      ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 7; ctx.shadowOffsetY = 2;
-      ctx.beginPath();
-      ctx.moveTo(px + 3, py + TILE - 3);
-      ctx.lineTo(px + 3, py + 9); ctx.lineTo(px + 7, py + 9); ctx.lineTo(px + 7, py + 5);
-      ctx.lineTo(px + TILE - 7, py + 5); ctx.lineTo(px + TILE - 7, py + 9); ctx.lineTo(px + TILE - 3, py + 9);
-      ctx.lineTo(px + TILE - 3, py + TILE - 3);
-      ctx.closePath(); ctx.fill();
-      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-      ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.stroke();
-      if (c.buildings.includes("walls")) {
-        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
-        ctx.strokeRect(px + 1.5, py + 1.5, TILE - 3, TILE - 3);
-        ctx.lineWidth = 1;
-      }
+      paintCity(ctx, c, px, py, CIVS_DEF[c.civ].color, c.buildings.includes("walls"));
       if (notices.some((n) => n.cityId === c.id)) {
         ctx.fillStyle = "#000";
         ctx.beginPath(); ctx.arc(px + 6, py + 8, 6, 0, 7); ctx.fill();
@@ -850,33 +999,22 @@ export default function Civilization() {
       if (u.aboard) return;
       if (!state.explored.has(idx(u.x, u.y))) return;
       const px = u.x * TILE, py = u.y * TILE;
-      ctx.fillStyle = CIVS_DEF[u.civ].color;
-      ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-      if (isShip(u.type)) {
-        ctx.beginPath();
-        ctx.moveTo(px + 4, py + TILE / 2 + 3);
-        ctx.lineTo(px + TILE - 4, py + TILE / 2 + 3);
-        ctx.lineTo(px + TILE - 8, py + TILE / 2 + 8);
-        ctx.lineTo(px + 8, py + TILE / 2 + 8);
-        ctx.closePath(); ctx.fill();
-        ctx.fillRect(px + TILE / 2 - 1, py + 5, 2, TILE / 2 - 2);
-        ctx.beginPath();
-        ctx.moveTo(px + TILE / 2 + 1, py + 6);
-        ctx.lineTo(px + TILE / 2 + 8, py + 11);
-        ctx.lineTo(px + TILE / 2 + 1, py + 14);
-        ctx.closePath(); ctx.fill();
-        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-        ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.stroke();
-      } else {
-        ctx.beginPath(); ctx.arc(px + TILE / 2, py + TILE / 2, 9, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-        ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.lineWidth = 1;
-        ctx.fillStyle = "#000"; ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
-        ctx.fillText(UNIT_TYPES[u.type].icon + (u.vet ? "*" : ""), px + TILE / 2, py + TILE / 2 + 4);
-      }
+      paintUnit(ctx, u, px, py, CIVS_DEF[u.civ].color);
       if (u.fortified) {
         ctx.strokeStyle = "rgba(255,255,255,0.9)";
         ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
+      }
+      if (u.vet) {
+        // gold veteran star, top-left
+        ctx.fillStyle = "#ffd84d"; ctx.strokeStyle = "#000"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let k = 0; k < 5; k++) {
+          const a = -Math.PI / 2 + k * (Math.PI * 2 / 5);
+          const a2 = a + Math.PI / 5;
+          ctx.lineTo(px + 6 + Math.cos(a) * 3.6, py + 6 + Math.sin(a) * 3.6);
+          ctx.lineTo(px + 6 + Math.cos(a2) * 1.6, py + 6 + Math.sin(a2) * 1.6);
+        }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
       }
       if (u.merc) {
         ctx.fillStyle = "#f5cf3d";
