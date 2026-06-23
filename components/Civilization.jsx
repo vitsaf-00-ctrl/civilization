@@ -542,34 +542,201 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Unit token: a civ-coloured chit with the unit's emoji "portrait" on top.
+// --- hand-drawn unit sprites, all centred at (cx, cy) on a dark token panel ---
+const ART = {
+  steel: "#dfe3ea", steelD: "#9aa1b0",
+  wood: "#b5824a", woodD: "#7d5026",
+  cream: "#f3ead2", gold: "#ffd24a",
+  horse: "#c08a4e", horseD: "#7d5026",
+  bronze: "#d79a36", bronzeD: "#9a6c1e",
+  stone: "#bcc0c8", red: "#e0564f", iron: "#3a3a46",
+};
+
+function drawHorse(cx, cy, ctx) {
+  const { horse, horseD } = ART;
+  ctx.fillStyle = horse;
+  ctx.beginPath(); ctx.ellipse(cx - 1, cy + 1, 6, 3.4, 0, 0, 7); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + 3, cy); ctx.lineTo(cx + 6, cy - 5); ctx.lineTo(cx + 8, cy - 4.5);
+  ctx.lineTo(cx + 7, cy - 2); ctx.lineTo(cx + 5, cy + 1); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = horseD; ctx.lineWidth = 1.8; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, cy + 3.5); ctx.lineTo(cx - 5, cy + 7);
+  ctx.moveTo(cx + 2, cy + 3.5); ctx.lineTo(cx + 3, cy + 7);
+  ctx.moveTo(cx - 1, cy + 3.8); ctx.lineTo(cx - 1, cy + 7);
+  ctx.moveTo(cx - 6.5, cy - 1); ctx.lineTo(cx - 8, cy + 3);
+  ctx.stroke(); ctx.lineWidth = 1;
+}
+
+const UNIT_SPRITES = {
+  settler(cx, cy, ctx) {
+    ctx.fillStyle = ART.iron;
+    ctx.beginPath(); ctx.arc(cx - 4, cy + 6, 2.6, 0, 7); ctx.arc(cx + 4, cy + 6, 2.6, 0, 7); ctx.fill();
+    ctx.fillStyle = ART.wood;
+    ctx.beginPath(); ctx.arc(cx - 4, cy + 6, 1, 0, 7); ctx.arc(cx + 4, cy + 6, 1, 0, 7); ctx.fill();
+    ctx.fillStyle = ART.woodD; ctx.fillRect(cx - 6, cy + 2, 12, 3);
+    ctx.fillStyle = ART.cream;
+    ctx.beginPath(); ctx.moveTo(cx - 6, cy + 2); ctx.quadraticCurveTo(cx, cy - 8, cx + 6, cy + 2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = ART.steelD; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 2, cy - 3.4); ctx.lineTo(cx - 2, cy + 2); ctx.moveTo(cx + 2, cy - 3.4); ctx.lineTo(cx + 2, cy + 2); ctx.stroke();
+  },
+  diplomat(cx, cy, ctx) {
+    ctx.fillStyle = ART.cream; ctx.fillRect(cx - 5, cy - 6, 10, 12);
+    ctx.fillStyle = ART.woodD;
+    ctx.beginPath(); ctx.ellipse(cx - 5, cy, 1.8, 6, 0, 0, 7); ctx.ellipse(cx + 5, cy, 1.8, 6, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(40,30,10,0.55)"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, cy - 3); ctx.lineTo(cx + 3, cy - 3);
+    ctx.moveTo(cx - 3, cy); ctx.lineTo(cx + 3, cy);
+    ctx.moveTo(cx - 3, cy + 3); ctx.lineTo(cx + 1, cy + 3); ctx.stroke();
+    ctx.fillStyle = ART.red; ctx.beginPath(); ctx.arc(cx + 3, cy + 4, 1.8, 0, 7); ctx.fill();
+  },
+  warrior(cx, cy, ctx) {
+    ctx.fillStyle = ART.wood;
+    ctx.beginPath(); ctx.arc(cx - 2, cy + 1, 6.2, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.woodD; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx - 2, cy + 1, 6.2, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx - 2, cy + 1, 3.2, 0, 7); ctx.stroke();
+    ctx.fillStyle = ART.bronze; ctx.beginPath(); ctx.arc(cx - 2, cy + 1, 1.4, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.woodD; ctx.lineWidth = 3.4; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx - 4, cy + 7); ctx.lineTo(cx + 5, cy - 4); ctx.stroke();
+    ctx.fillStyle = ART.wood; ctx.beginPath(); ctx.arc(cx + 5.5, cy - 5, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = ART.woodD; ctx.beginPath(); ctx.arc(cx + 4.5, cy - 4, 0.9, 0, 7); ctx.arc(cx + 6.5, cy - 6, 0.9, 0, 7); ctx.fill();
+    ctx.lineWidth = 1;
+  },
+  phalanx(cx, cy, ctx) {
+    ctx.strokeStyle = ART.woodD; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx + 5, cy - 8); ctx.lineTo(cx - 2, cy + 8); ctx.stroke();
+    ctx.fillStyle = ART.steel; ctx.beginPath();
+    ctx.moveTo(cx + 5, cy - 9); ctx.lineTo(cx + 7, cy - 5); ctx.lineTo(cx + 3.5, cy - 5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = ART.bronze; ctx.beginPath(); ctx.arc(cx - 1, cy, 7, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.bronzeD; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx - 1, cy, 7, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx - 1, cy, 4, 0, 7); ctx.stroke();
+    ctx.fillStyle = ART.bronzeD; ctx.beginPath(); ctx.arc(cx - 1, cy, 1.6, 0, 7); ctx.fill();
+  },
+  horseman(cx, cy, ctx) {
+    drawHorse(cx - 1, cy + 1, ctx);
+    ctx.fillStyle = ART.iron; ctx.fillRect(cx - 3, cy - 6, 3.4, 5);
+    ctx.fillStyle = "#e8b48a"; ctx.beginPath(); ctx.arc(cx - 1.3, cy - 7, 2, 0, 7); ctx.fill();
+  },
+  archer(cx, cy, ctx) {
+    const bx = cx - 1;
+    ctx.strokeStyle = ART.wood; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.arc(bx, cy, 7, -1.9, 1.9); ctx.stroke();
+    const ex = bx + 7 * Math.cos(1.9), ey1 = cy - 7 * Math.sin(1.9), ey2 = cy + 7 * Math.sin(1.9);
+    ctx.strokeStyle = ART.steel; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ex, ey1); ctx.lineTo(ex, ey2); ctx.stroke();
+    ctx.strokeStyle = ART.cream; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(ex, cy); ctx.lineTo(cx + 8, cy); ctx.stroke();
+    ctx.fillStyle = ART.steel; ctx.beginPath();
+    ctx.moveTo(cx + 8, cy); ctx.lineTo(cx + 5, cy - 2); ctx.lineTo(cx + 5, cy + 2); ctx.closePath(); ctx.fill();
+    ctx.lineWidth = 1;
+  },
+  legion(cx, cy, ctx) {
+    ctx.strokeStyle = ART.steel; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx + 1, cy + 3); ctx.lineTo(cx + 7, cy - 6); ctx.stroke();
+    ctx.strokeStyle = ART.gold; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 1, cy + 6); ctx.lineTo(cx + 2, cy + 1); ctx.stroke();
+    ctx.fillStyle = ART.red; roundRectPath(ctx, cx - 7, cy - 7, 9, 15, 3); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; roundRectPath(ctx, cx - 7, cy - 7, 9, 15, 3); ctx.stroke();
+    ctx.fillStyle = ART.gold; ctx.beginPath(); ctx.arc(cx - 2.5, cy, 1.7, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.gold; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 1, cy); ctx.moveTo(cx - 2.5, cy - 5); ctx.lineTo(cx - 2.5, cy + 6); ctx.stroke();
+  },
+  chariot(cx, cy, ctx) {
+    drawHorse(cx + 1, cy - 1, ctx);
+    ctx.strokeStyle = ART.iron; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(cx - 6, cy + 5, 4, 0, 7); ctx.stroke();
+    ctx.lineWidth = 1;
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 4;
+      ctx.beginPath(); ctx.moveTo(cx - 6, cy + 5); ctx.lineTo(cx - 6 + Math.cos(a) * 4, cy + 5 + Math.sin(a) * 4); ctx.stroke();
+    }
+    ctx.strokeStyle = ART.woodD; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 6, cy + 3); ctx.lineTo(cx - 1, cy); ctx.stroke();
+    ctx.lineWidth = 1;
+  },
+  catapult(cx, cy, ctx) {
+    ctx.fillStyle = ART.woodD; ctx.fillRect(cx - 7, cy + 3, 14, 2);
+    ctx.fillStyle = ART.iron;
+    ctx.beginPath(); ctx.arc(cx - 5, cy + 6, 1.7, 0, 7); ctx.arc(cx + 5, cy + 6, 1.7, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.wood; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx - 5, cy + 3); ctx.lineTo(cx, cy - 5); ctx.lineTo(cx + 5, cy + 3); ctx.stroke();
+    ctx.strokeStyle = ART.woodD;
+    ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx - 6, cy - 1); ctx.stroke();
+    ctx.fillStyle = ART.stone; ctx.beginPath(); ctx.arc(cx - 6, cy - 2, 2.2, 0, 7); ctx.fill();
+    ctx.lineWidth = 1;
+  },
+  knight(cx, cy, ctx) {
+    drawHorse(cx - 1, cy + 1, ctx);
+    ctx.fillStyle = ART.steel; ctx.fillRect(cx - 3, cy - 6, 3.6, 5);
+    ctx.fillStyle = ART.steelD; ctx.beginPath(); ctx.arc(cx - 1.2, cy - 7, 2.1, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.steelD; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(cx - 5, cy + 4); ctx.lineTo(cx + 6, cy - 7); ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.fillStyle = ART.red;
+    ctx.beginPath(); ctx.moveTo(cx + 6, cy - 7); ctx.lineTo(cx + 3.5, cy - 6); ctx.lineTo(cx + 4.5, cy - 4); ctx.closePath(); ctx.fill();
+  },
+};
+
+function drawGalley(cx, cy, ctx, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx - 11, cy + 1); ctx.lineTo(cx + 12, cy + 1);
+  ctx.lineTo(cx + 8, cy + 6); ctx.lineTo(cx - 9, cy + 6); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(cx - 9, cy + 1, 21, 1.6);
+  ctx.strokeStyle = ART.woodD; ctx.lineWidth = 1;
+  for (let x = -7; x <= 8; x += 3) { ctx.beginPath(); ctx.moveTo(cx + x, cy + 5); ctx.lineTo(cx + x - 2, cy + 8); ctx.stroke(); }
+  ctx.strokeStyle = "#3a2a17"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx - 1, cy - 9); ctx.lineTo(cx - 1, cy + 1); ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.fillStyle = ART.cream;
+  ctx.beginPath(); ctx.moveTo(cx - 1, cy - 8); ctx.lineTo(cx + 7, cy - 2); ctx.lineTo(cx - 1, cy - 1); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
+}
+
+// Unit token: a civ-coloured chit with a hand-drawn vector sprite on a dark panel.
 function paintUnit(ctx, u, px, py, color) {
   const T = TILE, cx = px + T / 2, cy = py + T / 2;
-  const ship = isShip(u.type);
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+
+  if (isShip(u.type)) {
+    ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+    drawGalley(cx, cy, ctx, color);
+    ctx.lineJoin = "miter"; ctx.lineCap = "butt"; ctx.lineWidth = 1;
+    return;
+  }
+
+  // civ-coloured frame
   ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-
-  // civ-coloured base plate
-  ctx.fillStyle = color;
-  if (ship) roundRectPath(ctx, cx - 13, cy - 8, 26, 16, 6);
-  else roundRectPath(ctx, cx - 10, cy - 10, 20, 20, 6);
-  ctx.fill();
+  ctx.fillStyle = color; roundRectPath(ctx, cx - 10, cy - 10, 20, 20, 6); ctx.fill();
   ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  // dark inner panel so the sprite reads on any civ colour
+  ctx.fillStyle = "#21212b"; roundRectPath(ctx, cx - 8, cy - 8, 16, 16, 4); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.06)"; roundRectPath(ctx, cx - 8, cy - 8, 16, 6, 3); ctx.fill();
 
-  // top gloss + dark rim
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
-  if (ship) roundRectPath(ctx, cx - 13, cy - 8, 26, 6, 4);
-  else roundRectPath(ctx, cx - 10, cy - 10, 20, 7, 4);
-  ctx.fill();
+  const draw = UNIT_SPRITES[u.type];
+  if (draw) draw(cx, cy, ctx);
+
   ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.5;
-  if (ship) roundRectPath(ctx, cx - 13, cy - 8, 26, 16, 6);
-  else roundRectPath(ctx, cx - 10, cy - 10, 20, 20, 6);
-  ctx.stroke(); ctx.lineWidth = 1;
+  roundRectPath(ctx, cx - 10, cy - 10, 20, 20, 6); ctx.stroke();
+  ctx.lineJoin = "miter"; ctx.lineCap = "butt"; ctx.lineWidth = 1;
+}
 
-  // emoji portrait
-  ctx.font = "16px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(UNIT_TYPES[u.type].emoji, cx, cy + 1);
-  ctx.textBaseline = "alphabetic";
+// Reuse the same canvas sprite inside HTML panels (unit & garrison lists).
+function UnitIcon({ type, color, size = 30 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    paintUnit(ctx, { type }, 0, 0, color);
+  }, [type, color]);
+  return <canvas ref={ref} width={TILE} height={TILE}
+    style={{ width: size, height: size, display: "inline-block", verticalAlign: "middle" }} />;
 }
 
 // ============ COMPONENT ============
@@ -2188,9 +2355,7 @@ export default function Civilization() {
             <div style={panel}>
               <div style={panelTitle}>Юніт{selUnit.aboard ? " · на борту" : ""}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ width: 34, height: 34, borderRadius: 8, background: CIVS_DEF[0].color, color: "#000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18 }}>
-                  {UNIT_TYPES[selUnit.type].emoji}
-                </span>
+                <UnitIcon type={selUnit.type} color={CIVS_DEF[selUnit.civ].color} size={36} />
                 <div>
                   <div style={{ fontWeight: 700 }}>{UNIT_TYPES[selUnit.type].name}{selUnit.vet ? " ★" : ""}{selUnit.merc ? " 💰 найманець" : ""}</div>
                   <div style={{ fontSize: 11.5, color: "#9a9ac4" }}>
@@ -2275,7 +2440,7 @@ export default function Civilization() {
                         title={`${UNIT_TYPES[u.type].name}${u.vet ? " ★" : ""} · ⚔${UNIT_TYPES[u.type].att} 🛡${UNIT_TYPES[u.type].def} 👣${u.moves}${u.fortified ? " · укріплений" : ""}`}
                         style={{ ...sbtn, background: selected === u.id ? "#3a7a30" : "#2c4d80", borderColor: selected === u.id ? "#5aa050" : "#4a6aa0" }}
                         onClick={() => { setSelected(u.id); ensureTileVisible(u.x, u.y, false); }}>
-                        {UNIT_TYPES[u.type].emoji} {UNIT_TYPES[u.type].name}{u.vet ? "★" : ""}{u.fortified ? " 🛡" : u.moves > 0 ? "" : " ⏸"}
+                        <UnitIcon type={u.type} color={CIVS_DEF[u.civ].color} size={18} /> {UNIT_TYPES[u.type].name}{u.vet ? "★" : ""}{u.fortified ? " 🛡" : u.moves > 0 ? "" : " ⏸"}
                       </button>
                     ))}
                   </div>
