@@ -48,6 +48,16 @@ const UNIT_TYPES = {
   catapult: { name: "Катапульта", att: 6, def: 1, move: 1, cost: 50, icon: "K", emoji: "🪨", tech: "mathematics" },
   knight:   { name: "Лицар",      att: 4, def: 2, move: 2, cost: 60, icon: "R", emoji: "🏇", tech: "chivalry" },
   trireme:  { name: "Трирема",    att: 1, def: 1, move: 3, cost: 40, icon: "T", emoji: "⛵", tech: "map_making", sea: true, cap: 2 },
+  musketeer:{ name: "Мушкетер",   att: 3, def: 3, move: 1, cost: 30, icon: "M", emoji: "🔫", tech: "gunpowder" },
+  cannon:   { name: "Гармата",    att: 8, def: 1, move: 1, cost: 40, icon: "N", emoji: "💥", tech: "metallurgy" },
+  cavalry:  { name: "Кавалерія",  att: 8, def: 3, move: 2, cost: 60, icon: "V", emoji: "🐎", tech: "leadership" },
+  riflemen: { name: "Стрільці",   att: 5, def: 4, move: 1, cost: 40, icon: "F", emoji: "🪖", tech: "conscription" },
+  artillery:{ name: "Артилерія",  att: 10, def: 1, move: 1, cost: 60, icon: "Y", emoji: "🎯", tech: "machine_tools" },
+  armor:    { name: "Танк",       att: 10, def: 5, move: 3, cost: 80, icon: "X", emoji: "🛡️", tech: "automobile" },
+  galleon:  { name: "Галеон",     att: 1, def: 2, move: 4, cost: 40, icon: "G", emoji: "🚢", tech: "navigation",  sea: true, cap: 4 },
+  frigate:  { name: "Фрегат",     att: 4, def: 2, move: 4, cost: 50, icon: "Q", emoji: "⛴️", tech: "magnetism",   sea: true, cap: 2 },
+  ironclad: { name: "Броненосець",att: 4, def: 4, move: 4, cost: 60, icon: "I", emoji: "🛳️", tech: "steel",       sea: true },
+  battleship:{ name: "Лінкор",    att: 12, def: 12, move: 4, cost: 160, icon: "B", emoji: "🚢", tech: "automobile", sea: true },
 };
 const isShip = (t) => !!UNIT_TYPES[t].sea;
 
@@ -58,6 +68,15 @@ const BUILDINGS = {
   walls:       { name: "Міські стіни", cost: 60, tech: "masonry",    desc: "Захист у місті ×2" },
   library:     { name: "Бібліотека",   cost: 60, tech: "writing",    desc: "Наука міста +50%" },
   marketplace: { name: "Ринок",        cost: 60, tech: "currency",   desc: "Золото міста +50%" },
+  aqueduct:    { name: "Акведук",      cost: 60, tech: "construction", desc: "+1 їжа в місті (швидший ріст)" },
+  colosseum:   { name: "Колізей",      cost: 70, tech: "construction", desc: "+3 задоволених мешканці" },
+  university:  { name: "Університет",  cost: 90, tech: "university",  desc: "Наука міста +50% (з бібліотекою)" },
+  bank:        { name: "Банк",         cost: 90, tech: "banking",     desc: "Золото міста +50% (з ринком)" },
+  cathedral:   { name: "Собор",        cost: 90, tech: "monotheism",  desc: "+4 задоволених мешканці" },
+  sewer_system:{ name: "Каналізація",  cost: 80, tech: "sanitation",  desc: "+2 задоволених мешканці" },
+  factory:     { name: "Фабрика",      cost: 140, tech: "industrialization", desc: "Виробництво міста +50%" },
+  power_plant: { name: "Електростанція", cost: 120, tech: "electricity", desc: "Виробництво міста +25% (з фабрикою)" },
+  stock_exchange: { name: "Біржа",     cost: 120, tech: "economics",  desc: "Золото міста +50% (з ринком і банком)" },
 };
 
 const WONDERS = {
@@ -66,6 +85,13 @@ const WONDERS = {
   great_library:   { name: "Велика бібліотека", cost: 200, tech: "literacy",   desc: "+4 науки за хід" },
   hanging_gardens: { name: "Висячі сади",       cost: 200, tech: "pottery",    desc: "+1 задоволений мешканець у всіх містах" },
   oracle:          { name: "Оракул",            cost: 180, tech: "ceremonial", desc: "Ефект храмів подвоюється" },
+  great_wall:        { name: "Велика стіна",       cost: 240, tech: "construction", desc: "Усі ваші міста захищені, мов міськими стінами (×2)" },
+  sun_tzu:           { name: "Академія Сунь-цзи",  cost: 260, tech: "feudalism",    desc: "Усі нові юніти народжуються ветеранами" },
+  michelangelo:      { name: "Капела Мікеланджело", cost: 300, tech: "monotheism",  desc: "+2 задоволених у всіх ваших містах" },
+  copernicus:        { name: "Обсерваторія Коперника", cost: 300, tech: "astronomy", desc: "+6 науки за хід" },
+  isaac_newton:      { name: "Коледж Ньютона",     cost: 360, tech: "university",   desc: "+8 науки за хід" },
+  adam_smith:        { name: "Біржа Адама Сміта",  cost: 360, tech: "economics",    desc: "+8 золота за хід" },
+  statue_of_liberty: { name: "Статуя Свободи",     cost: 320, tech: "democracy",    desc: "+1 задоволений у всіх ваших містах" },
 };
 
 const TECHS = {
@@ -87,12 +113,47 @@ const TECHS = {
   republic:     { name: "Республіка",      cost: 36, req: ["writing", "currency"] },
   feudalism:    { name: "Феодалізм",       cost: 36, req: ["monarchy"] },
   chivalry:     { name: "Лицарство",       cost: 44, req: ["feudalism", "horseback"] },
+  // --- Класична доба ---
+  mysticism:    { name: "Містицизм",       cost: 20, req: ["ceremonial"] },
+  polytheism:   { name: "Багатобожжя",     cost: 24, req: ["ceremonial", "horseback"] },
+  construction: { name: "Будівництво",     cost: 28, req: ["masonry", "currency"] },
+  trade:        { name: "Торгівля",        cost: 30, req: ["currency", "writing"] },
+  astronomy:    { name: "Астрономія",      cost: 34, req: ["mysticism", "mathematics"] },
+  philosophy:   { name: "Філософія",       cost: 34, req: ["mysticism", "literacy"] },
+  // --- Середньовіччя ---
+  monotheism:   { name: "Єдинобожжя",      cost: 40, req: ["philosophy", "polytheism"] },
+  university:   { name: "Університети",    cost: 44, req: ["astronomy", "philosophy"] },
+  navigation:   { name: "Навігація",       cost: 44, req: ["map_making", "astronomy"] },
+  banking:      { name: "Банківництво",    cost: 46, req: ["trade", "republic"] },
+  engineering:  { name: "Інженерія",       cost: 42, req: ["construction", "wheel"] },
+  bridge_building: { name: "Мостобудування", cost: 46, req: ["construction", "iron"] },
+  physics:      { name: "Фізика",          cost: 48, req: ["literacy", "navigation"] },
+  invention:    { name: "Винахідництво",   cost: 50, req: ["engineering", "literacy"] },
+  gunpowder:    { name: "Порох",           cost: 54, req: ["iron", "invention"] },
+  // --- Ренесанс ---
+  magnetism:    { name: "Магнетизм",       cost: 56, req: ["physics", "iron"] },
+  metallurgy:   { name: "Металургія",      cost: 60, req: ["gunpowder", "university"] },
+  leadership:   { name: "Полководство",    cost: 60, req: ["gunpowder", "chivalry"] },
+  democracy:    { name: "Демократія",      cost: 62, req: ["banking", "philosophy"] },
+  economics:    { name: "Економіка",       cost: 64, req: ["banking", "university"] },
+  sanitation:   { name: "Санітарія",       cost: 66, req: ["engineering", "bridge_building"] },
+  // --- Індустріальна доба ---
+  steam_engine: { name: "Парова машина",   cost: 70, req: ["physics", "invention"] },
+  railroad:     { name: "Залізниця",       cost: 78, req: ["steam_engine", "bridge_building"] },
+  conscription: { name: "Призов",          cost: 80, req: ["democracy", "metallurgy"] },
+  industrialization: { name: "Індустріалізація", cost: 88, req: ["railroad", "banking"] },
+  electricity:  { name: "Електрика",       cost: 90, req: ["magnetism", "metallurgy"] },
+  the_corporation: { name: "Корпорація",   cost: 96, req: ["industrialization", "economics"] },
+  steel:        { name: "Сталь",           cost: 100, req: ["industrialization", "electricity"] },
+  machine_tools: { name: "Верстати",       cost: 112, req: ["steel", "leadership"] },
+  automobile:   { name: "Автомобіль",      cost: 110, req: ["steel", "the_corporation"] },
 };
 
 const GOVERNMENTS = {
   despotism: { name: "Деспотизм", tech: null,       desc: "Базова форма правління" },
   monarchy:  { name: "Монархія",  tech: "monarchy", desc: "+1 виробництво в кожному місті" },
   republic:  { name: "Республіка", tech: "republic", desc: "+1 торгівля в кожному місті" },
+  democracy: { name: "Демократія", tech: "democracy", desc: "+2 торгівля в кожному місті" },
 };
 
 const CIVS_DEF = [
@@ -116,6 +177,10 @@ const AI_TIERS = [
   { turn: 50, units: ["phalanx", "archer", "legion"] },
   { turn: 70, units: ["archer", "legion", "chariot"] },
   { turn: 95, units: ["legion", "catapult", "knight"] },
+  { turn: 110, units: ["knight", "catapult", "musketeer"] },
+  { turn: 122, units: ["musketeer", "cannon", "cavalry"] },
+  { turn: 132, units: ["riflemen", "cannon", "cavalry"] },
+  { turn: 138, units: ["riflemen", "artillery", "armor"] },
 ];
 
 const idx = (x, y) => y * MAP_W + x;
@@ -292,15 +357,23 @@ function cityYields(c, world, improvements, wondersBuilt, government) {
   const gov = c.civ === 0 ? government : "despotism";
   let food = t.food + 1 + Math.min(irr, c.pop + 1) + Math.min(spF, 4);
   if (wondersBuilt.pyramids === 0 && c.civ === 0) food += 1;
+  if (c.buildings.includes("aqueduct")) food += 1;
   let shields = t.prod + 1 + Math.floor(c.pop / 2) + Math.min(mine, c.pop + 1) + Math.min(spP, 4) + (gov === "monarchy" ? 1 : 0);
-  let trade = 1 + Math.floor(c.pop / 2) + Math.min(road, c.pop + 1) + Math.min(spT, 4) + (hasRiver ? 2 : 0) + (gov === "republic" ? 1 : 0);
+  if (c.buildings.includes("factory")) shields = Math.round(shields * 1.5);
+  if (c.buildings.includes("power_plant")) shields = Math.round(shields * 1.25);
+  let trade = 1 + Math.floor(c.pop / 2) + Math.min(road, c.pop + 1) + Math.min(spT, 4) + (hasRiver ? 2 : 0) + (gov === "republic" ? 1 : 0) + (gov === "democracy" ? 2 : 0);
   return { food, shields, trade };
 }
 
 function cityUnhappy(c, wondersBuilt) {
   let content = 4;
   if (c.buildings.includes("temple")) content += wondersBuilt.oracle === c.civ ? 6 : 3;
+  if (c.buildings.includes("colosseum")) content += 3;
+  if (c.buildings.includes("cathedral")) content += 4;
+  if (c.buildings.includes("sewer_system")) content += 2;
   if (wondersBuilt.hanging_gardens === c.civ) content += 1;
+  if (wondersBuilt.michelangelo === c.civ) content += 2;
+  if (wondersBuilt.statue_of_liberty === c.civ) content += 1;
   if (c.civ !== 0) content += 2; // AI отримує бонус замість менеджменту щастя
   return Math.max(0, c.pop - content);
 }
@@ -678,6 +751,63 @@ const UNIT_SPRITES = {
     ctx.fillStyle = ART.red;
     ctx.beginPath(); ctx.moveTo(cx + 6, cy - 7); ctx.lineTo(cx + 3.5, cy - 6); ctx.lineTo(cx + 4.5, cy - 4); ctx.closePath(); ctx.fill();
   },
+  musketeer(cx, cy, ctx) {
+    ctx.fillStyle = "#3a4a6a"; roundRectPath(ctx, cx - 4, cy - 4, 7, 11, 2); ctx.fill();
+    ctx.fillStyle = "#e8b48a"; ctx.beginPath(); ctx.arc(cx - 0.5, cy - 6, 2.2, 0, 7); ctx.fill();
+    ctx.fillStyle = ART.iron; ctx.fillRect(cx - 3.6, cy - 8, 6.2, 1.7);
+    ctx.strokeStyle = ART.steelD; ctx.lineWidth = 1.7; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx - 5, cy + 6); ctx.lineTo(cx + 7, cy - 6); ctx.stroke();
+    ctx.fillStyle = ART.steel; ctx.beginPath(); ctx.arc(cx + 7, cy - 6, 1.2, 0, 7); ctx.fill();
+    ctx.lineWidth = 1;
+  },
+  cannon(cx, cy, ctx) {
+    ctx.fillStyle = ART.woodD; ctx.beginPath(); ctx.arc(cx - 4, cy + 5, 3.4, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.iron; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx - 4, cy + 5, 3.4, 0, 7); ctx.stroke();
+    ctx.fillStyle = ART.wood; ctx.beginPath(); ctx.arc(cx - 4, cy + 5, 1.2, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.woodD; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx - 7, cy + 5); ctx.lineTo(cx + 2, cy + 2); ctx.stroke();
+    ctx.strokeStyle = ART.iron; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(cx - 5, cy + 1); ctx.lineTo(cx + 7, cy - 5); ctx.stroke();
+    ctx.lineWidth = 1;
+  },
+  cavalry(cx, cy, ctx) {
+    drawHorse(cx - 1, cy + 1, ctx);
+    ctx.fillStyle = "#3a4a6a"; ctx.fillRect(cx - 3, cy - 6, 3.6, 5);
+    ctx.fillStyle = "#e8b48a"; ctx.beginPath(); ctx.arc(cx - 1.2, cy - 7, 2, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.steel; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx + 1, cy - 4); ctx.lineTo(cx + 6, cy - 9); ctx.stroke();
+    ctx.lineWidth = 1;
+  },
+  riflemen(cx, cy, ctx) {
+    ctx.fillStyle = "#4a5a3a"; roundRectPath(ctx, cx - 4, cy - 3, 7, 10, 2); ctx.fill();
+    ctx.fillStyle = "#5a6a48"; ctx.beginPath(); ctx.arc(cx - 0.5, cy - 5, 2.6, Math.PI, 0); ctx.fill();
+    ctx.fillRect(cx - 3.2, cy - 5, 5.4, 1.4);
+    ctx.fillStyle = "#e8b48a"; ctx.fillRect(cx - 2, cy - 4.4, 3, 2.3);
+    ctx.strokeStyle = ART.iron; ctx.lineWidth = 1.7; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx + 4, cy + 6); ctx.lineTo(cx + 4, cy - 7); ctx.stroke();
+    ctx.fillStyle = ART.steel; ctx.beginPath(); ctx.arc(cx + 4, cy - 7, 0.9, 0, 7); ctx.fill();
+    ctx.lineWidth = 1;
+  },
+  artillery(cx, cy, ctx) {
+    ctx.fillStyle = ART.iron; roundRectPath(ctx, cx - 7, cy + 3, 14, 4, 2); ctx.fill();
+    ctx.fillStyle = "#54545f";
+    for (let x = -5; x <= 5; x += 2.5) { ctx.beginPath(); ctx.arc(cx + x, cy + 5, 1, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#3a4150"; ctx.beginPath(); ctx.arc(cx - 2, cy + 2, 3, 0, 7); ctx.fill();
+    ctx.strokeStyle = ART.steelD; ctx.lineWidth = 3.2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx - 3, cy + 1); ctx.lineTo(cx + 8, cy - 6); ctx.stroke();
+    ctx.fillStyle = ART.steel; ctx.beginPath(); ctx.arc(cx + 8, cy - 6, 1.4, 0, 7); ctx.fill();
+    ctx.lineWidth = 1;
+  },
+  armor(cx, cy, ctx) {
+    ctx.fillStyle = ART.iron; roundRectPath(ctx, cx - 8, cy + 1, 16, 6, 3); ctx.fill();
+    ctx.fillStyle = "#54545f";
+    for (let x = -6; x <= 6; x += 2) { ctx.beginPath(); ctx.arc(cx + x, cy + 4, 1.1, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#4a5a3a"; roundRectPath(ctx, cx - 6, cy - 2, 12, 4, 1.5); ctx.fill();
+    ctx.fillStyle = "#5a6a48"; ctx.beginPath(); ctx.arc(cx - 1, cy - 3, 3, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#3a4530"; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx, cy - 3); ctx.lineTo(cx + 8, cy - 5); ctx.stroke();
+    ctx.lineWidth = 1;
+  },
 };
 
 function drawGalley(cx, cy, ctx, color) {
@@ -698,6 +828,80 @@ function drawGalley(cx, cy, ctx, color) {
   ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
 }
 
+function drawGalleon(cx, cy, ctx, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx - 11, cy + 2); ctx.lineTo(cx + 12, cy + 2);
+  ctx.lineTo(cx + 8, cy + 7); ctx.lineTo(cx - 9, cy + 7); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(cx - 9, cy + 2, 21, 1.6);
+  ctx.strokeStyle = "#3a2a17"; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(cx - 5, cy - 9); ctx.lineTo(cx - 5, cy + 2);
+  ctx.moveTo(cx + 4, cy - 9); ctx.lineTo(cx + 4, cy + 2); ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.fillStyle = ART.cream;
+  roundRectPath(ctx, cx - 8, cy - 8, 7, 9, 1); ctx.fill();
+  roundRectPath(ctx, cx + 1, cy - 8, 7, 9, 1); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1;
+  roundRectPath(ctx, cx - 8, cy - 8, 7, 9, 1); ctx.stroke();
+  roundRectPath(ctx, cx + 1, cy - 8, 7, 9, 1); ctx.stroke();
+}
+
+function drawFrigate(cx, cy, ctx, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx - 12, cy + 2); ctx.lineTo(cx + 12, cy + 2);
+  ctx.lineTo(cx + 9, cy + 7); ctx.lineTo(cx - 9, cy + 7); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = ART.iron;
+  for (let x = -7; x <= 7; x += 3) ctx.fillRect(cx + x, cy + 3.4, 1.6, 1.6);
+  ctx.strokeStyle = "#3a2a17"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 2); ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.fillStyle = ART.cream;
+  roundRectPath(ctx, cx - 6, cy - 9, 12, 10, 1.5); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; roundRectPath(ctx, cx - 6, cy - 9, 12, 10, 1.5); ctx.stroke();
+}
+
+function drawIronclad(cx, cy, ctx, color) {
+  ctx.fillStyle = ART.steelD;
+  ctx.beginPath();
+  ctx.moveTo(cx - 12, cy + 3); ctx.lineTo(cx + 12, cy + 3);
+  ctx.lineTo(cx + 9, cy + 7); ctx.lineTo(cx - 9, cy + 7); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = color; roundRectPath(ctx, cx - 7, cy - 3, 14, 6, 1.5); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1; roundRectPath(ctx, cx - 7, cy - 3, 14, 6, 1.5); ctx.stroke();
+  ctx.fillStyle = ART.iron; ctx.fillRect(cx - 1.5, cy - 9, 3, 6);
+  ctx.fillStyle = "rgba(200,200,210,0.5)"; ctx.beginPath(); ctx.arc(cx, cy - 10, 2, 0, 7); ctx.fill();
+}
+
+function drawBattleship(cx, cy, ctx, color) {
+  ctx.fillStyle = ART.steelD;
+  ctx.beginPath();
+  ctx.moveTo(cx - 13, cy + 3); ctx.lineTo(cx + 13, cy + 2);
+  ctx.lineTo(cx + 9, cy + 7); ctx.lineTo(cx - 10, cy + 7); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = color; ctx.fillRect(cx - 9, cy, 18, 3);
+  ctx.fillStyle = "#6a7080"; roundRectPath(ctx, cx - 2, cy - 8, 5, 8, 1); ctx.fill();
+  ctx.fillStyle = ART.iron; ctx.fillRect(cx + 4, cy - 5, 2.4, 5); ctx.fillRect(cx - 5, cy - 5, 2.4, 5);
+  ctx.strokeStyle = ART.steel; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx + 3, cy - 1); ctx.lineTo(cx + 9, cy - 3);
+  ctx.moveTo(cx - 3, cy - 1); ctx.lineTo(cx - 9, cy - 3); ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+const SHIP_SPRITES = {
+  trireme: drawGalley,
+  galleon: drawGalleon,
+  frigate: drawFrigate,
+  ironclad: drawIronclad,
+  battleship: drawBattleship,
+};
+
 // Unit token: a civ-coloured chit with a hand-drawn vector sprite on a dark panel.
 function paintUnit(ctx, u, px, py, color) {
   const T = TILE, cx = px + T / 2, cy = py + T / 2;
@@ -705,7 +909,7 @@ function paintUnit(ctx, u, px, py, color) {
 
   if (isShip(u.type)) {
     ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-    drawGalley(cx, cy, ctx, color);
+    (SHIP_SPRITES[u.type] || drawGalley)(cx, cy, ctx, color);
     ctx.lineJoin = "miter"; ctx.lineCap = "butt"; ctx.lineWidth = 1;
     return;
   }
@@ -756,6 +960,8 @@ export default function Civilization() {
   const [slotsView, setSlotsView] = useState(null); // null | "save" | "load"
   const [gameLen, setGameLen] = useState(END_TURN); // total turns for the chosen length
   const [setupMode, setSetupMode] = useState(true); // show the length picker before play
+  const [booted, setBooted] = useState(false);      // true once we've checked for a saved game
+  const [menuTab, setMenuTab] = useState("home");   // start-menu section: home | new | load | settings
   const [zoom, setZoom] = useState(1.5);
   const [muted, setMuted] = useState(false);
   const [mousePos, setMousePos] = useState(null);   // {cx, cy} for cursor tooltip
@@ -933,7 +1139,7 @@ export default function Civilization() {
   const addLogs = (m) => { if (m.length) setLog((l) => [...m.slice().reverse(), ...l].slice(0, 8)); };
 
   // "Нова гра" just reopens the length picker; startGame actually builds the world
-  const restart = () => setSetupMode(true);
+  const restart = () => { setMenuTab("home"); setSetupMode(true); };
 
   const startGame = (turns) => {
     const ns = Math.floor(Math.random() * 2147480000) + 1;
@@ -1018,6 +1224,16 @@ export default function Civilization() {
     writeSave("auto");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.turn]);
+
+  // resume the last autosave on startup so a long break doesn't wipe progress
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(slotKey("auto"));
+      if (raw) loadGame("auto");
+    } catch (e) {}
+    setBooted(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ============ RENDER ============
   useEffect(() => {
@@ -1362,7 +1578,7 @@ export default function Civilization() {
               msgs.push(`⚔ Ви оголосили війну: ${CIVS_DEF[enemyCiv].name}!`);
             }
             const cityHere = state.cities.find((c) => c.x === x && c.y === y);
-            const hasWalls = cityHere && cityHere.buildings.includes("walls");
+            const hasWalls = cityHere && (cityHere.buildings.includes("walls") || state.wondersBuilt.great_wall === cityHere.civ);
             const defInfo = bestDefender(enemiesHere, world, x, y, hasWalls);
             const win = doCombat(u, defInfo);
             let units;
@@ -1673,7 +1889,7 @@ export default function Civilization() {
 
     // періодичні набіги варварів
     if (turn >= 10 && turn % 7 === 0) {
-      const barbType = turn < 30 * techScale ? "warrior" : turn < 70 * techScale ? "legion" : "knight";
+      const barbType = turn < 30 * techScale ? "warrior" : turn < 70 * techScale ? "legion" : turn < 110 * techScale ? "knight" : turn < 132 * techScale ? "musketeer" : "riflemen";
       for (let tries = 0; tries < 200; tries++) {
         const bx = 1 + Math.floor(Math.random() * (MAP_W - 2));
         const by = 1 + Math.floor(Math.random() * (MAP_H - 2));
@@ -1729,7 +1945,7 @@ export default function Civilization() {
       if (shields >= cost) {
         shields = 0;
         if (tU) {
-          const vet = c.buildings.includes("barracks");
+          const vet = c.buildings.includes("barracks") || wondersBuilt.sun_tzu === c.civ;
           let ux = c.x, uy = c.y;
           if (tU.sea) {
             // знайти сусідню воду
@@ -1775,12 +1991,18 @@ export default function Civilization() {
         let goldPart = (y.trade * taxRate) / 100;
         let sciPart = y.trade - goldPart;
         if (c.buildings.includes("marketplace")) goldPart *= 1.5;
+        if (c.buildings.includes("bank")) goldPart *= 1.5;
+        if (c.buildings.includes("stock_exchange")) goldPart *= 1.5;
         if (c.buildings.includes("library")) sciPart *= 1.5;
+        if (c.buildings.includes("university")) sciPart *= 1.5;
         income += Math.round(goldPart);
         sci += Math.round(sciPart);
       });
       if (wondersBuilt.great_library === 0) sci += 4;
+      if (wondersBuilt.copernicus === 0) sci += 6;
+      if (wondersBuilt.isaac_newton === 0) sci += 8;
       if (wondersBuilt.colossus === 0) income += 4;
+      if (wondersBuilt.adam_smith === 0) income += 8;
     } else {
       msgs.push("🔥 Анархія: казна та наука не працюють.");
     }
@@ -1873,7 +2095,7 @@ export default function Civilization() {
         const playerCityHere = cities.find((c) => c.civ === 0 && c.x === nx && c.y === ny);
         if (playerUnitsHere.length > 0) {
           if (!atWar || UNIT_TYPES[cur.type].att === 0) continue;
-          const hasWalls = playerCityHere && playerCityHere.buildings.includes("walls");
+          const hasWalls = playerCityHere && (playerCityHere.buildings.includes("walls") || wondersBuilt.great_wall === 0);
           const defInfo = bestDefender(playerUnitsHere, world, nx, ny, hasWalls);
           const win = doCombat(cur, defInfo);
           if (win) {
@@ -2005,12 +2227,18 @@ export default function Civilization() {
       let goldPart = (y.trade * state.taxRate) / 100;
       let sciPart = y.trade - goldPart;
       if (c.buildings.includes("marketplace")) goldPart *= 1.5;
+      if (c.buildings.includes("bank")) goldPart *= 1.5;
+      if (c.buildings.includes("stock_exchange")) goldPart *= 1.5;
       if (c.buildings.includes("library")) sciPart *= 1.5;
+      if (c.buildings.includes("university")) sciPart *= 1.5;
       income += Math.round(goldPart);
       sciRate += Math.round(sciPart);
     });
     if (state.wondersBuilt.great_library === 0) sciRate += 4;
+    if (state.wondersBuilt.copernicus === 0) sciRate += 6;
+    if (state.wondersBuilt.isaac_newton === 0) sciRate += 8;
     if (state.wondersBuilt.colossus === 0) income += 4;
+    if (state.wondersBuilt.adam_smith === 0) income += 8;
   }
 
   const viewYields = viewCity ? cityYields(viewCity, world, state.improvements, state.wondersBuilt, state.government) : null;
@@ -2160,25 +2388,85 @@ export default function Civilization() {
         </div>
       )}
 
-      {setupMode && (
+      {setupMode && booted && (() => {
+        const autoMeta = getSlotMeta("auto");
+        const hasAnySave = SAVE_SLOTS.some((s) => getSlotMeta(s));
+        const backBtn = (
+          <button style={{ ...sbtn, background: "#2a2a48", borderColor: "#46466e", marginTop: 12 }} onClick={() => setMenuTab("home")}>← Назад</button>
+        );
+        return (
         <div className="civ-overlay" style={{ position: "fixed", inset: 0, background: "rgba(5,5,14,0.74)", backdropFilter: "blur(9px)", WebkitBackdropFilter: "blur(9px)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div className="civ-card" style={{ ...panel, width: 400, maxWidth: "92vw", padding: "20px 22px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 14 }}>
               <span style={{ fontSize: 26, filter: "drop-shadow(0 0 10px rgba(245,207,61,0.45))" }}>🏛</span>
               <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: 2.5, background: "linear-gradient(90deg,#ffe680,#f5cf3d,#e8a93d)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" }}>CIVILIZATION</span>
             </div>
-            <div style={{ ...panelTitle, marginBottom: 4 }}>Нова гра — оберіть тривалість</div>
-            <div style={{ fontSize: 11.5, color: "#9a9ac4", marginBottom: 14 }}>Чим довша гра, тим повільніше спливає час і більше ходів до фіналу (2000 рік).</div>
-            {GAME_MODES.map((m, i) => (
-              <button key={m.turns} className="civ-card" style={{ ...btn, animationDelay: `${0.04 * i}s`, width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", marginBottom: 8, padding: "12px 15px", fontSize: 13 }}
-                onClick={() => startGame(m.turns)}>
-                <span style={{ fontWeight: 750, letterSpacing: 0.3 }}>{m.name}</span>
-                <span style={{ fontSize: 11, opacity: 0.86, fontWeight: 600 }}>{m.turns} ходів · {m.desc}</span>
+
+            {menuTab === "home" && (<>
+              {autoMeta && (
+                <button className="civ-card" style={{ ...btn, width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", marginBottom: 12, padding: "13px 15px", fontSize: 14, background: "linear-gradient(180deg,#2c6e3a,#1c4a26)", borderColor: "rgba(120,210,140,0.5)", fontWeight: 800 }}
+                  onClick={() => loadGame("auto")}>
+                  <span>▶ Продовжити гру</span>
+                  <span style={{ fontSize: 11, opacity: 0.86, fontWeight: 600 }}>Хід {autoMeta.turn} · {yearOf(autoMeta.turn, autoMeta.gameLen)}</span>
+                </button>
+              )}
+              <button className="civ-card" style={{ ...btn, width: "100%", display: "flex", alignItems: "center", gap: 11, marginBottom: 8, padding: "13px 15px", fontSize: 14, fontWeight: 750 }} onClick={() => setMenuTab("new")}>
+                <span style={{ fontSize: 18 }}>🆕</span> Нова гра
               </button>
-            ))}
+              <button className="civ-card" style={{ ...btn, width: "100%", display: "flex", alignItems: "center", gap: 11, marginBottom: 8, padding: "13px 15px", fontSize: 14, fontWeight: 750, opacity: hasAnySave ? 1 : 0.5 }} disabled={!hasAnySave} onClick={() => hasAnySave && setMenuTab("load")}>
+                <span style={{ fontSize: 18 }}>📂</span> Збережені {!hasAnySave && <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>— порожньо</span>}
+              </button>
+              <button className="civ-card" style={{ ...btn, width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "13px 15px", fontSize: 14, fontWeight: 750 }} onClick={() => setMenuTab("settings")}>
+                <span style={{ fontSize: 18 }}>⚙️</span> Налаштування
+              </button>
+            </>)}
+
+            {menuTab === "new" && (<>
+              <div style={{ ...panelTitle, marginBottom: 4 }}>Нова гра — оберіть тривалість</div>
+              <div style={{ fontSize: 11.5, color: "#9a9ac4", marginBottom: 14 }}>Чим довша гра, тим повільніше спливає час і більше ходів до фіналу (2000 рік).</div>
+              {GAME_MODES.map((m, i) => (
+                <button key={m.turns} className="civ-card" style={{ ...btn, animationDelay: `${0.04 * i}s`, width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", marginBottom: 8, padding: "12px 15px", fontSize: 13 }}
+                  onClick={() => startGame(m.turns)}>
+                  <span style={{ fontWeight: 750, letterSpacing: 0.3 }}>{m.name}</span>
+                  <span style={{ fontSize: 11, opacity: 0.86, fontWeight: 600 }}>{m.turns} ходів · {m.desc}</span>
+                </button>
+              ))}
+              {backBtn}
+            </>)}
+
+            {menuTab === "load" && (<>
+              <div style={{ ...panelTitle, marginBottom: 10 }}>📂 Збережені ігри</div>
+              {SAVE_SLOTS.map((s) => {
+                const meta = getSlotMeta(s);
+                const title = s === "auto" ? "🕓 Автозбереження" : `Слот ${s}`;
+                return (
+                  <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", marginBottom: 5, background: "rgba(255,255,255,0.04)", borderRadius: 6 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12.5 }}>{title}</div>
+                      <div style={{ fontSize: 10.5, color: "#8a8ab8" }}>{meta ? `Хід ${meta.turn} · ${yearOf(meta.turn, meta.gameLen)}` : "порожньо"}</div>
+                    </div>
+                    <button style={{ ...sbtn, opacity: meta ? 1 : 0.4, cursor: meta ? "pointer" : "default" }} disabled={!meta} onClick={() => meta && loadGame(s)}>{meta ? "Завантажити" : "—"}</button>
+                  </div>
+                );
+              })}
+              {backBtn}
+            </>)}
+
+            {menuTab === "settings" && (<>
+              <div style={{ ...panelTitle, marginBottom: 10 }}>⚙️ Налаштування</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", marginBottom: 6, background: "rgba(255,255,255,0.04)", borderRadius: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{muted ? "🔇 Звук" : "🔊 Звук"}</span>
+                <button style={sbtn} onClick={toggleMute}>{muted ? "Увімкнути" : "Вимкнути"}</button>
+              </div>
+              <div style={{ fontSize: 11, color: "#8a8ab8", padding: "2px 2px 4px", lineHeight: 1.5 }}>
+                Прогрес зберігається автоматично щоходу в цьому браузері. Збереження доступне лише на цьому пристрої та в цьому браузері.
+              </div>
+              {backBtn}
+            </>)}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {slotsView && (
         <div className="civ-overlay" onClick={() => setSlotsView(null)} style={{ position: "fixed", inset: 0, background: "rgba(5,5,14,0.64)", backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
